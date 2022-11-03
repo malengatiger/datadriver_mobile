@@ -1,0 +1,12 @@
+const appleGreen = "🍏",
+    appleRed = "🍎",
+    brocolli = "🥦",
+    leaf = "🥬",
+    peach = "🍊",
+    pear = "🍊",
+    blueDot = "🔵",
+    redDot = " 🔴",
+    heartBlue = "💙",
+    heartGreen = "💚",
+    heartOrange = "🧡",
+    diamond = "🔷";
