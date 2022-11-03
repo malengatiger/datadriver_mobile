@@ -1,6 +1,7 @@
 import 'package:datadriver_mobile/data_models/event.dart';
 import 'package:datadriver_mobile/emojis.dart';
 import 'package:datadriver_mobile/services/data_service.dart';
+import 'package:datadriver_mobile/services/network_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -61,6 +62,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
   var dataService = DataService();
+  var networkService = HttpService();
   var events = <Event>[];
   var totalCount = 0;
 
@@ -79,7 +81,15 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _getEvents();
+    _generateEvents();
 
+
+  }
+  _generateEvents() async {
+    var result = await networkService.generateEvents(
+      intervalInSeconds: 10, upperCountPerPlace: 40, maxCount: 20000
+    );
+    p('$heartGreen $heartGreen _MyHomePageState: call result:  $result $heartGreen $heartGreen');
   }
   _getEvents() async {
     p('$heartBlue $heartBlue _MyHomePageState calling DataService getEvents method ... ');

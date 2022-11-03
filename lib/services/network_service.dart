@@ -1,39 +1,55 @@
 import 'dart:convert';
 
+import 'package:datadriver_mobile/emojis.dart';
 import 'package:datadriver_mobile/services/util.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class HttpService {
-
-
   late http.Client client;
-  Future<String> getEvents() async {
-    var url = dotenv.env['VAR_NAME'];
+  HttpService() {
+    p('$heartOrange $heartOrange  HttpService constructed');
+    client = http.Client();
+    p('$heartOrange $heartOrange  http.Client created:  ${client.toString()}');
+  }
+
+  Future<String?> generateEvents(
+      {required int intervalInSeconds, required int upperCountPerPlace, required int maxCount}) async {
+    var url = dotenv.env['DEV_URL'];
+    var suffix1 = 'generateEvents?intervalInSeconds=$intervalInSeconds';
+    var suffix2 = '&upperCountPerPlace=$upperCountPerPlace';
+    var suffix3 = '&maxCount=$maxCount';
     if (url != null) {
-      url += "getEvents";
-      p("Url prefix is $url");
+      url += '$suffix1$suffix2$suffix3';
+      p("$heartOrange $heartOrange HTTP Url: $url");
     } else {
       throw Exception("URL parameter not found");
     }
 
-    client ??= http.Client();
-    p("Network Client created");
+    // url = 'http://localhost:8094/generateEvents?intervalInSeconds=10&upperCountPerPlace=50&maxCount=20000';
+    //client ??= http.Client();
+    p("$heartOrange $heartOrange Network Client created  $brocolli ${client.toString()}");
     try {
-      var response = await client.get(
-          Uri.https(url));
-      var decodedResponse = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
-      var uri = Uri.parse(decodedResponse['uri'] as String);
-      var result = await client.get(uri);
-      if (kDebugMode) {
-        print(result);
+      var response = await client.get(Uri.parse(url));
+      p('$brocolli $brocolli We have a response from the DataDriver API!  '
+          'statusCode: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        var decodedResponse = response.body;
+        p('$brocolli $brocolli HttpService: decodedResponse: $decodedResponse');
+        if (kDebugMode) {
+          p('$heartOrange $heartOrange $decodedResponse');
+        }
+        return decodedResponse;
+      } else {
+        p('$redDot Error Response status code: ${response.statusCode}');
       }
-      var body = result.body;
-      p(body);
-      return result.body;
+    } catch (e) {
+      p('$redDot $redDot $redDot Things got a little fucked up! $e');
+      throw Exception('$redDot $redDot $redDot Network shit screwed up! $e');
     } finally {
-    client.close();
+      client.close();
     }
+    return null;
   }
 }
