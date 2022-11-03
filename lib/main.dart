@@ -93,7 +93,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
   _getEvents() async {
     p('$heartBlue $heartBlue _MyHomePageState calling DataService getEvents method ... ');
-    events = await dataService.getEvents(minutes: 10);
+    events = await dataService.getEvents(minutes: 2);
     totalCount  = await dataService.getEventCount();
   }
 

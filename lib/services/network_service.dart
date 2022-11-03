@@ -32,7 +32,7 @@ class HttpService {
     p("$heartOrange $heartOrange Network Client created  $brocolli ${client.toString()}");
     try {
       var response = await client.get(Uri.parse(url));
-      p('$brocolli $brocolli We have a response from the DataDriver API!  '
+      p('$brocolli $brocolli We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode}');
       if (response.statusCode == 200) {
         var decodedResponse = response.body;
