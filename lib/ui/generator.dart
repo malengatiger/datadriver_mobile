@@ -32,10 +32,7 @@ class _GeneratorState extends State<Generator> with SingleTickerProviderStateMix
 
   void startGenerator() async {
     p('$heartGreen starting the Generator in the cloud ...');
-    result = await _runGenerator();
-    setState(() {
-
-    });
+    await  _runGenerator();
     p('$heartGreen starting the Timers to read generated event data ...');
     _runTimer();
     _runTimerTotal();
@@ -53,7 +50,7 @@ class _GeneratorState extends State<Generator> with SingleTickerProviderStateMix
   final _formKey = GlobalKey<FormState>();
   late Timer timer, timer2;
 
-  _runGenerator() async {
+  Future<String?> _runGenerator() async {
     p('$heartBlue About to start HttpService generateEvents call');
     p('$heartBlue intervalInSeconds: $intervalInSeconds, upperCountPerPlace: $upperCountPerPlace  maxCount: $maxCount');
     result = (await networkService.generateEvents(
@@ -63,6 +60,7 @@ class _GeneratorState extends State<Generator> with SingleTickerProviderStateMix
 
       });
     }
+    return result;
   }
 
   _runTimer() async {
