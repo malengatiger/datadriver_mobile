@@ -36,9 +36,11 @@ class DataService {
   }
 
   Future<int> getEventCount() async {
+    p('$heartBlue .... DataService getting Total Events from Firestore ..');
+
     var count = db.collection('events').count();
     var m = await count.get();
-    p(' $heartBlue There are ${m.count} events in the Firestore collection  $heartBlue');
+    p('$heartBlue $heartBlue  $heartBlue There are ${m.count} events in the Firestore collection  $heartBlue');
     return m.count;
   }
 }

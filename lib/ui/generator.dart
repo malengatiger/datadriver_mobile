@@ -92,7 +92,7 @@ class _GeneratorState extends State<Generator> with SingleTickerProviderStateMix
 
   int intervalInSeconds = 60, intervalInSecondsForTotal = 60,
       maxCount = 20000,
-      dataLastMinutes = 120, upperCountPerPlace = 20;
+      dataLastMinutes = 20, upperCountPerPlace = 20;
 
   @override
   Widget build(BuildContext context) {
@@ -101,115 +101,157 @@ class _GeneratorState extends State<Generator> with SingleTickerProviderStateMix
         title: const Text('Generator Control'),
       ),
       backgroundColor: Colors.pink.shade50,
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Card(
-            elevation: 8,
-            child: Column(
-              children: [
-                const SizedBox(
-                  height: 16,
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: <Widget>[
-                        const Text(
-                          'Generator Controls',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
-                        ),
-                        const SizedBox(
-                          height: 12,
-                        ),
-                        // Add TextFormFields and ElevatedButton here.
-                        TextFormField(
-                          decoration: const InputDecoration(
-                              labelText: 'Interval In Seconds', hintText: 'Enter Interval In Seconds'),
-                          // The validator receives the text that the user has entered.
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter Interval in Seconds';
-                            }
-                            intervalInSeconds = int.parse(value);
-                            return null;
-                          },
-                        ),
-                        TextFormField(
-                          decoration: const InputDecoration(
-                              labelText: 'Interval In Seconds for Total', hintText: 'Enter Interval In Seconds for Total'),
-                          // The validator receives the text that the user has entered.
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter Interval in Seconds';
-                            }
-                            intervalInSecondsForTotal = int.parse(value);
-                            return null;
-                          },
-                        ),
-                        TextFormField(
-                          decoration: const InputDecoration(
-                              labelText: 'Place Event Upper Count', hintText: 'Enter Event Upper Count'),
-                          // The validator receives the text that the user has entered.
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter Upper Bound for Place Event generation';
-                            }
-                            upperCountPerPlace = int.parse(value);
-                            return null;
-                          },
-                        ),
-                        TextFormField(
-                          // The validator receives the text that the user has entered.
-                          decoration:
-                              const InputDecoration(labelText: 'Maximum Events', hintText: 'Enter Max Event Count'),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter Maximum Events for Generator';
-                            }
-                            maxCount = int.parse(value);
-                            return null;
-                          },
-                        ),
-                        const SizedBox(
-                          height: 48,
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                              primary: Colors.teal, onPrimary: Colors.white, onSurface: Colors.grey, elevation: 8),
-                          onPressed: () {
-                            // Validate returns true if the form is valid, or false otherwise.
-                            if (_formKey.currentState!.validate()) {
-                              p('$heartOrange Validating form  ...');
-                              // If the form is valid, display a snackbar. In the real world,
-                              // you'd often call a server or save the information in a database.
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Data Stream has been kicked off ...')),
-                              );
-                              startGenerator();
-                            }
-                          },
-                          child: const Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Text('Start Data Streaming'),
+      body: SingleChildScrollView(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Card(
+              elevation: 8,
+              child: Column(
+                children: [
+                  const SizedBox(
+                    height: 16,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: <Widget>[
+                          const Text(
+                            'Generator Controls',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22),
                           ),
-                        ),
-                        const SizedBox(height: 24,),
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(result),
-                        ),
-                      ],
+                          const SizedBox(
+                            height: 12,
+                          ),
+                          // Add TextFormFields and ElevatedButton here.
+                          TextFormField(
+                            decoration: const InputDecoration(
+                                labelText: 'Interval In Seconds', hintText: 'Enter Interval In Seconds'),
+                            // The validator receives the text that the user has entered.
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter Interval in Seconds';
+                              }
+                              intervalInSeconds = int.parse(value);
+                              return null;
+                            },
+                          ),
+                          TextFormField(
+                            decoration: const InputDecoration(
+                                labelText: 'Interval In Seconds for Total', hintText: 'Enter Interval In Seconds for Total'),
+                            // The validator receives the text that the user has entered.
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter Interval in Seconds';
+                              }
+                              intervalInSecondsForTotal = int.parse(value);
+                              return null;
+                            },
+                          ),
+                          TextFormField(
+                            decoration: const InputDecoration(
+                                labelText: 'Place Event Upper Count', hintText: 'Enter Event Upper Count'),
+                            // The validator receives the text that the user has entered.
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter Upper Bound for Place Event generation';
+                              }
+                              upperCountPerPlace = int.parse(value);
+                              return null;
+                            },
+                          ),
+                          TextFormField(
+                            // The validator receives the text that the user has entered.
+                            decoration:
+                                const InputDecoration(labelText: 'Maximum Events', hintText: 'Enter Max Event Count'),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter Maximum Events for Generator';
+                              }
+                              maxCount = int.parse(value);
+                              return null;
+                            },
+                          ),
+                          TextFormField(
+                            // The validator receives the text that the user has entered.
+                            decoration:
+                            const InputDecoration(labelText: 'Minutes to Read Data', hintText: 'Enter Minutes to Read Data'),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please Enter Minutes to Read Data';
+                              }
+                              dataLastMinutes = int.parse(value);
+                              return null;
+                            },
+                          ),
+                          const SizedBox(
+                            height: 48,
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                                primary: Colors.teal, onPrimary: Colors.white, onSurface: Colors.grey, elevation: 8),
+                            onPressed: () {
+                              // Validate returns true if the form is valid, or false otherwise.
+                              if (_formKey.currentState!.validate()) {
+                                p('$heartOrange Validating form  ...');
+                                // If the form is valid, display a snackbar. In the real world,
+                                // you'd often call a server or save the information in a database.
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Data Stream has been kicked off ...')),
+                                );
+                                startGenerator();
+                              }
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Text('Start Data Streaming'),
+                            ),
+                          ),
+                          const SizedBox(height: 24,),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                                primary: Colors.pink, onPrimary: Colors.white, onSurface: Colors.grey, elevation: 4),
+                            onPressed: () {
+                              // Validate returns true if the form is valid, or false otherwise.
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Data Stream has been STOPPED!')),
+                              );
+                              stopGenerator();
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Text('STOP Data Streaming'),
+                            ),
+                          ),
+                          const SizedBox(height: 24,),
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(result),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> stopGenerator() async {
+    result = (await networkService.stopGenerator())!;
+    p('$redDot $redDot $redDot stopGenerator: Network Service: $result');
+    timer.cancel();
+    timer2.cancel();
+    p('$redDot $redDot $redDot Timers stopped!');
+    setState(() {
+
+    });
+
   }
 }

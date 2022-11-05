@@ -50,4 +50,39 @@ class HttpService {
     }
     return null;
   }
+
+  Future<String?> stopGenerator() async {
+    var url = dotenv.env['DEV_URL'];
+    var suffix1 = 'stopGenerator';
+
+    if (url != null) {
+      url += suffix1;
+      p("$heartOrange $heartOrange stopGenerator HTTP Url: $url");
+    } else {
+      throw Exception("URL parameter not found");
+    }
+
+    // url = 'http://localhost:8094/generateEvents?intervalInSeconds=10&upperCountPerPlace=50&maxCount=20000';
+    //client ??= http.Client();
+    p("$heartOrange $heartOrange Network Client created  $brocolli ${client.toString()}");
+    try {
+      var response = await client.get(Uri.parse(url));
+      p('$brocolli $brocolli We have a response from the DataDriver API! $heartOrange '
+          'statusCode: ${response.statusCode}');
+      if (response.statusCode == 200) {
+        var decodedResponse = response.body;
+        p('$brocolli $brocolli HttpService: decodedResponse: $decodedResponse');
+        if (kDebugMode) {
+          p('$heartOrange $heartOrange $decodedResponse');
+        }
+        return decodedResponse;
+      } else {
+        p('$redDot Error Response status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      p('$redDot $redDot $redDot Things got a little fucked up! $e');
+      throw Exception('$redDot $redDot $redDot Network shit screwed up! $e');
+    }
+    return null;
+  }
 }
