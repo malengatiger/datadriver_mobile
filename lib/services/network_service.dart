@@ -47,8 +47,6 @@ class HttpService {
     } catch (e) {
       p('$redDot $redDot $redDot Things got a little fucked up! $e');
       throw Exception('$redDot $redDot $redDot Network shit screwed up! $e');
-    } finally {
-      client.close();
     }
     return null;
   }

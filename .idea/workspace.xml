@@ -5,6 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d7bad416-33e1-40d6-babf-7514efbf0511" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/lib/ui/generator.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.flutter-plugins-dependencies" beforeDir="false" afterPath="$PROJECT_DIR$/.flutter-plugins-dependencies" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/codestream.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codestream.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/main.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/main.dart" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/services/network_service.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/services/network_service.dart" afterDir="false" />
     </list>
@@ -17,6 +21,7 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Dart File" />
+        <option value="animated_widget" />
       </list>
     </option>
   </component>
@@ -39,10 +44,11 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "com.google.cloudcode.ide_session_index": "20221103_0009",
+    "com.google.cloudcode.ide_session_index": "20221104_0014",
     "dart.analysis.tool.window.visible": "false",
     "io.flutter.reload.alreadyRun": "true",
-    "last_opened_file_path": "/Users/mac/WORK/datadriver_mobile"
+    "last_opened_file_path": "/Users/mac/WORK/datadriver_mobile",
+    "show.migrate.to.gradle.popup": "false"
   }
 }]]></component>
   <component name="RecentsManager">
@@ -100,7 +106,14 @@
       <option name="project" value="LOCAL" />
       <updated>1667496863177</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="network http call working">
+      <created>1667497454288</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1667497454288</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -110,6 +123,7 @@
     <MESSAGE value="added Firestore service  " />
     <MESSAGE value="added main" />
     <MESSAGE value="added network service" />
-    <option name="LAST_COMMIT_MESSAGE" value="added network service" />
+    <MESSAGE value="network http call working" />
+    <option name="LAST_COMMIT_MESSAGE" value="network http call working" />
   </component>
 </project>
