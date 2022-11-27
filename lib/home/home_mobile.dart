@@ -40,7 +40,7 @@ class _HomeMobileState extends State<HomeMobile> {
         PageTransition(
             type: PageTransitionType.scale,
             alignment: Alignment.bottomCenter,
-            duration: const Duration(milliseconds: 500),
+            duration: const Duration(milliseconds: 1000),
             child: const About()));
   }
 

@@ -28,7 +28,12 @@ class DataService {
         var m = await signInAnonymously();
         p('$heartGreen $heartGreen $heartGreen user signed in with signInAnonymously');
       } else {
-        p('$appleGreen User is signed in! 🍎 user: ${user.email}');
+        var msg = '$appleGreen User is signed in! ';
+        if (user.email == null) {
+          p('$msg - anonymous user');
+        } else {
+          p('$msg 🍎 user: ${user.email}');
+        }
         // var m = await getEvents(minutes: 120);
         // p('$heartOrange FirebaseAuth.instance.userChanges(): $heartOrange events because user authed: ${m.length}');
       }

@@ -56,14 +56,19 @@ dependencies:
   gauges: ^1.0.0
   flex_color_scheme: ^6.1.1
   flutter_riverpod: ^2.1.1
+  riverpod_generator: ^1.0.6
   responsive_builder: ^0.4.3
   device_preview: ^1.1.0
   go_router: ^5.2.0
+  riverpod_annotation:
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+    # a tool for running code generators
+  build_runner:
+  riverpod_generator:
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

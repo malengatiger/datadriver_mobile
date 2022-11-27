@@ -2,10 +2,11 @@ import 'package:device_preview/device_preview.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:universal_frontend/home/home_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:universal_frontend/services/data_service.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:universal_frontend/utils/util.dart';
+import 'package:universal_frontend/widgets/events_list.dart';
 
 import 'firebase_options.dart';
 
@@ -16,14 +17,19 @@ Future<void> main() async {
   p('$heartBlue Firebase App has been initialized: ${firebaseApp.name}');
 
   DataService.listenForAuth();
-  runApp(
-    DevicePreview(
-      enabled: !kReleaseMode,
-      builder: (context) => const MyApp(), // Wrap your app
-    ),
-  );
-  var events = await DataService.getEvents(minutes: 30);
-  p('${events.length} events found. $heartGreen');
+
+  // wrap the entire app with a ProviderScope so that widgets
+  // will be able to read providers
+  runApp(ProviderScope(
+    child: DevicePreview(
+        enabled: !kReleaseMode,
+        builder: (context) {
+          return const MyApp();
+        } // Wrap your app
+        ),
+  ));
+  // var events = await DataService.getEvents(minutes: 30);
+  // p('${events.length} events found by  DataService. $heartGreen');
 }
 
 class MyApp extends StatelessWidget {
@@ -38,7 +44,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const HomeScreen(),
+      home:  const EventsList(showHeader: true),
     );
   }
 }
