@@ -1,12 +1,13 @@
 import 'package:device_preview/device_preview.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:universal_frontend/services/data_service.dart';
+import 'package:universal_frontend/ui/dashboard/dashboard_main.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:universal_frontend/utils/util.dart';
-import 'package:universal_frontend/widgets/events_list.dart';
 
 import 'firebase_options.dart';
 
@@ -16,8 +17,13 @@ Future<void> main() async {
   firebaseApp = await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   p('$heartBlue Firebase App has been initialized: ${firebaseApp.name}');
 
+  p('${Emoji.brocolli} Checking for current user : FirebaseAuth');
+  var user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    p('Ding Dong! new Firebase user, for now sign in anonymously $appleGreen  $appleGreen');
+    await DataService.signInAnonymously();
+  }
   DataService.listenForAuth();
-
   // wrap the entire app with a ProviderScope so that widgets
   // will be able to read providers
   runApp(ProviderScope(
@@ -44,7 +50,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home:  const EventsList(showHeader: true),
+      home: const DashboardMain(),
     );
   }
 }

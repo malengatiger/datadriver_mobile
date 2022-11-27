@@ -34,8 +34,6 @@ class DataService {
         } else {
           p('$msg 🍎 user: ${user.email}');
         }
-        // var m = await getEvents(minutes: 120);
-        // p('$heartOrange FirebaseAuth.instance.userChanges(): $heartOrange events because user authed: ${m.length}');
       }
     });
   }

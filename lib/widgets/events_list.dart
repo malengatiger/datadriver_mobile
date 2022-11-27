@@ -15,6 +15,7 @@ class EventsList extends ConsumerWidget {
     return Scaffold(
         backgroundColor: Colors.brown[100],
         body: data.when(data: (data) {
+          p('Data.when fired   $redDot');
           var list = data.map((e) => e).toList();
           return Column(
             children: [
@@ -88,10 +89,12 @@ class EventsList extends ConsumerWidget {
             ],
           );
         }, error: (err, s) {
+          p('Data.when fired  error: $err   $redDot');
           return Center(
             child: Text('We have a problem: ${err.toString()}'),
           );
         }, loading: () {
+          p('data.when fired; loading ...   $redDot');
           return const Center(
             child: CircularProgressIndicator(),
           );

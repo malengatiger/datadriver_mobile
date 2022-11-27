@@ -16,5 +16,5 @@ import '../repositories/event_repository.dart';
 // }
 
 final myEventsFutureProvider = FutureProvider((ref) async {
-  return ref.watch(eventProvider).getEventsWithinMinutes(minutes: 5);
+  return ref.watch(eventProvider).getEventsWithinMinutes(minutes: 15);
 });
