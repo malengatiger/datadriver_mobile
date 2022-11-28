@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../data_models/event.dart';
 
@@ -25,16 +26,23 @@ class AmountByTime extends StatelessWidget {
     for (var element in events) {
       total += element.amount;
     }
+    var f = NumberFormat.compact();
     return SizedBox(
       height: height,
       width: width,
       child: Card(
           elevation: elevation,
           color: color ?? Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
           child: Column(
             children: [
+              const SizedBox(
+                height: 40,
+              ),
               Text(
-                total.toStringAsFixed(0),
+                f.format(total),
                 style: numberTextStyle,
               ),
               const SizedBox(

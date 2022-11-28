@@ -15,6 +15,21 @@ import '../repositories/event_repository.dart';
 //   return MyEventRepository();
 // }
 
+// final myEventsFutureProvider = FutureProvider.family<List<Event>, int>((ref, minutes) async {
+//   return ref.watch(dataProvider).getEventsWithinMinutes(minutes: minutes);
+// });
+
 final myEventsFutureProvider = FutureProvider((ref) async {
-  return ref.watch(eventProvider).getEventsWithinMinutes(minutes: 15);
+  return ref.watch(dataProvider).getEventsWithinMinutes(minutes: 60);
+});
+final myCitiesCountFutureProvider = FutureProvider((ref) async {
+  return ref.watch(dataProvider).countCities();
+});
+
+final myPlacesCountFutureProvider = FutureProvider((ref) async {
+  return ref.watch(dataProvider).countPlaces();
+});
+
+final myUsersCountFutureProvider = FutureProvider((ref) async {
+  return ref.watch(dataProvider).countUsers();
 });

@@ -26,12 +26,21 @@ class RatingByTime extends StatelessWidget {
     for (var element in events) {
       total += element.rating;
     }
-    final avg = (total / events.length).toStringAsFixed(2);
+    var avg = '0.0';
+    if (events.isNotEmpty) {
+      avg = (total / events.length).toStringAsFixed(2);
+    }
     return Card(
         elevation: elevation,
         color: color ?? Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
         child: Column(
           children: [
+            const SizedBox(
+              height: 40,
+            ),
             Text(
               avg,
               style: numberTextStyle,
