@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/minutes_widget.dart';
 
-import '../../ui/aggregates/aggregates_page.dart';
 import '../../utils/providers.dart';
 import '../../utils/util.dart';
+import '../aggregates/aggregate_page.dart';
 import '../dashboard/widgets/dashboard_grid.dart';
 
 class DashboardMobile extends ConsumerWidget {
@@ -106,7 +106,7 @@ class DashboardMobile extends ConsumerWidget {
             type: PageTransitionType.scale,
             alignment: Alignment.bottomCenter,
             duration: const Duration(milliseconds: 1000),
-            child: const AggregatesPage()));
+            child: const AggregatePage()));
   }
 
   void navigateToACityList() {}

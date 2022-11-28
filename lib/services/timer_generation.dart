@@ -10,7 +10,7 @@ import 'network_service.dart';
 class TimerGeneration {
   late Timer timer;
   var cities = <City>[];
-  var networkService = NetworkService();
+  var networkService = ApiService();
   var dataService = DataService();
   var random = Random(DateTime.now().millisecondsSinceEpoch);
 

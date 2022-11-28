@@ -68,7 +68,6 @@ dev_dependencies:
     sdk: flutter
     # a tool for running code generators
   build_runner:
-  riverpod_generator:
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

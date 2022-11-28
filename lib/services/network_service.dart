@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import '../data_models/city_aggregate.dart';
@@ -9,16 +8,16 @@ import '../data_models/generation_message.dart';
 import '../utils/emojis.dart';
 import '../utils/util.dart';
 
-abstract class AbstractNetworkService {
+abstract class AbstractApiService {
   Future<GenerationMessage?> generateEventsByCity({required String cityId, required int count});
   Future<List<CityAggregate>> getCityAggregates({required int minutes});
   Future<List<GenerationMessage>> generateEventsByCities({required List<String> cityIds, required int upperCount});
 }
 
-class NetworkService implements AbstractNetworkService {
+class ApiService implements AbstractApiService {
   late http.Client client;
   String? url, currentStatus;
-  NetworkService() {
+  ApiService() {
     p('$heartOrange $heartOrange  HttpService constructed');
     client = http.Client();
     p('$heartOrange $heartOrange  http.Client created:  ${client.toString()}');
@@ -26,7 +25,7 @@ class NetworkService implements AbstractNetworkService {
   }
   void setStatus() {
     p('$heartOrange $heartOrange  setting current status  ...');
-    currentStatus = dotenv.env['CURRENT_STATUS']!;
+    currentStatus = dotenv.env['CURRENT_STATUS'];
     if (currentStatus == 'dev') {
       url = dotenv.env['DEV_URL']!;
     }
@@ -109,8 +108,9 @@ class NetworkService implements AbstractNetworkService {
 
   @override
   Future<List<CityAggregate>> getCityAggregates({required int minutes}) async {
+    p('$appleGreen ... apiService getting aggregates ...');
     var results = <CityAggregate>[];
-
+    setStatus();
     var suffix1 = 'getCityAggregates?minutes=$minutes';
     var fullUrl = '';
     if (url != null) {
@@ -140,7 +140,7 @@ class NetworkService implements AbstractNetworkService {
   }
 }
 
-final apiProvider = Provider<NetworkService>((ref) => NetworkService());
+// final apiProvider = Provider<ApiService>((ref) => ApiService());
 
 class GenerateEventsByCityParams {
   late String cityId;
