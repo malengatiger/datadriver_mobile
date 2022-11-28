@@ -1,4 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:universal_frontend/data_models/generation_message.dart';
+import 'package:universal_frontend/services/network_service.dart';
+import 'package:universal_frontend/utils/emojis.dart';
+import 'package:universal_frontend/utils/util.dart';
 
 import '../repositories/event_repository.dart';
 
@@ -29,7 +33,15 @@ final myCitiesCountFutureProvider = FutureProvider((ref) async {
 final myPlacesCountFutureProvider = FutureProvider((ref) async {
   return ref.watch(dataProvider).countPlaces();
 });
-
 final myUsersCountFutureProvider = FutureProvider((ref) async {
   return ref.watch(dataProvider).countUsers();
+});
+final myCityAggregateFutureProvider = FutureProvider((ref) async {
+  return ref.watch(apiProvider).getCityAggregates(minutes: 60);
+});
+
+final myCityEventGeneratorProvider =
+    FutureProvider.family<Future<GenerationMessage>, GenerateEventsByCityParams>((ref, params) async {
+  p('$brocolli inside myCityEventGeneratorProvider ... cityId ${params.cityId}');
+  return ref.watch(apiProvider).generateEventsByCity(cityId: params.cityId, count: params.count);
 });

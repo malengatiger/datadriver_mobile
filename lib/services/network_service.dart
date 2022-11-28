@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import '../data_models/city_aggregate.dart';
@@ -9,7 +9,13 @@ import '../data_models/generation_message.dart';
 import '../utils/emojis.dart';
 import '../utils/util.dart';
 
-class NetworkService {
+abstract class AbstractNetworkService {
+  Future<GenerationMessage?> generateEventsByCity({required String cityId, required int count});
+  Future<List<CityAggregate>> getCityAggregates({required int minutes});
+  Future<List<GenerationMessage>> generateEventsByCities({required List<String> cityIds, required int upperCount});
+}
+
+class NetworkService implements AbstractNetworkService {
   late http.Client client;
   String? url, currentStatus;
   NetworkService() {
@@ -30,36 +36,7 @@ class NetworkService {
     p('$redDot HttpService url: $url');
   }
 
-  Future<GenerationMessage?> generateEventsByCity({required String cityId, required int count}) async {
-    var suffix1 = 'generateEventsByCity?cityId=$cityId';
-    var suffix2 = '&count=$count';
-    var fullUrl = '';
-    if (url != null) {
-      fullUrl = '$url$suffix1$suffix2';
-    } else {
-      throw Exception('Url from .env not found');
-    }
-    try {
-      p("$heartOrange HTTP Url: $fullUrl");
-      var response = await client.get(Uri.parse(fullUrl)).timeout(const Duration(seconds: 30));
-      p('$brocolli $brocolli We have a response from the DataDriver API! $heartOrange '
-          'statusCode: ${response.statusCode} - ${response.body}');
-      if (response.statusCode == 200) {
-        var body = response.body;
-        var msg = GenerationMessage.fromJson(jsonDecode(body));
-        return msg;
-      } else {
-        p('$redDot Error Response status code: ${response.statusCode}');
-        throw Exception('$redDot $redDot $redDot Server could not handlee request: ${response.body}');
-      }
-    } catch (e) {
-      p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
-      throw Exception('$redDot $redDot $redDot Network shit screwed up! $e');
-    }
-    return null;
-  }
-
-  var random = Random(DateTime.now().millisecondsSinceEpoch);
+  @override
   Future<List<GenerationMessage>> generateEventsByCities(
       {required List<String> cityIds, required int upperCount}) async {
     var results = <GenerationMessage>[];
@@ -101,6 +78,36 @@ class NetworkService {
     return [];
   }
 
+  @override
+  Future<GenerationMessage> generateEventsByCity({required String cityId, required int count}) async {
+    var suffix1 = 'generateEventsByCity?cityId=$cityId';
+    var suffix2 = '&count=$count';
+    var fullUrl = '';
+    if (url != null) {
+      fullUrl = '$url$suffix1$suffix2';
+    } else {
+      throw Exception('Url from .env not found');
+    }
+    try {
+      p("$heartOrange HTTP Url: $fullUrl");
+      var response = await client.get(Uri.parse(fullUrl)).timeout(const Duration(seconds: 30));
+      p('$brocolli $brocolli We have a response from the DataDriver API! $heartOrange '
+          'statusCode: ${response.statusCode} - ${response.body}');
+      if (response.statusCode == 200) {
+        var body = response.body;
+        var msg = GenerationMessage.fromJson(jsonDecode(body));
+        return msg;
+      } else {
+        p('$redDot Error Response status code: ${response.statusCode}');
+        throw Exception('$redDot $redDot $redDot Server could not handlee request: ${response.body}');
+      }
+    } catch (e) {
+      p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
+      throw Exception('$redDot $redDot $redDot Network shit screwed up! $e');
+    }
+  }
+
+  @override
   Future<List<CityAggregate>> getCityAggregates({required int minutes}) async {
     var results = <CityAggregate>[];
 
@@ -130,6 +137,14 @@ class NetworkService {
       p('$redDot $redDot $redDot Things got a little fucked up! $e');
       throw Exception('$redDot $redDot $redDot Network shit screwed up! $e');
     }
-    return [];
   }
+}
+
+final apiProvider = Provider<NetworkService>((ref) => NetworkService());
+
+class GenerateEventsByCityParams {
+  late String cityId;
+  late int count;
+
+  GenerateEventsByCityParams(this.cityId, this.count);
 }
