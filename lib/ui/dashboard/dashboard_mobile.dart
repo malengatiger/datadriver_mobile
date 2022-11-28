@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:page_transition/page_transition.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/minutes_widget.dart';
 
+import '../../ui/util.dart';
 import '../../utils/providers.dart';
 import '../../utils/util.dart';
+import '../../ui/aggregates/aggregates_page.dart';
 import '../dashboard/widgets/dashboard_grid.dart';
 
 class DashboardMobile extends ConsumerWidget {
@@ -67,6 +70,40 @@ class DashboardMobile extends ConsumerWidget {
           ),
         ],
       ),
+      bottomNavigationBar: BottomNavigationBar(elevation: 8, currentIndex: 0, onTap: onNavTap, items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.add_chart), label: 'Aggregates'),
+        BottomNavigationBarItem(icon: Icon(Icons.location_on), label: 'Generator'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.list_alt),
+          label: 'Cities',
+        ),
+      ]),
     );
   }
+
+  void onNavTap(int index) {
+    switch (index) {
+      case 0:
+        navigateToAggregates();
+        break;
+      case 1:
+        navigateToGenerator();
+        break;
+      case 2:
+        navigateToACityList();
+    }
+  }
+
+  void navigateToAggregates(BuildContext context) {
+    Navigator.push(
+        context,
+        PageTransition(
+            type: PageTransitionType.scale,
+            alignment: Alignment.bottomCenter,
+            duration: const Duration(milliseconds: 1000),
+            child: const AggregatesPage()));
+  }
+
+  void navigateToACityList() {}
+  void navigateToGenerator() {}
 }
