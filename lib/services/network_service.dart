@@ -23,6 +23,7 @@ class ApiService implements AbstractApiService {
     p('$heartOrange $heartOrange  http.Client created:  ${client.toString()}');
     setStatus();
   }
+
   void setStatus() {
     p('$heartOrange $heartOrange  setting current status  ...');
     currentStatus = dotenv.env['CURRENT_STATUS'];

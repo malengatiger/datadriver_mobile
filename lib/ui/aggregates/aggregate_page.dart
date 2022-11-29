@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' as phoneLocale;
 import 'package:page_transition/page_transition.dart';
 import 'package:universal_frontend/data_models/city_aggregate.dart';
 import 'package:universal_frontend/services/network_service.dart';
 import 'package:universal_frontend/ui/city/city_page.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 
+import '../../services/timer_generation.dart';
 import '../../utils/util.dart';
 
 class AggregatePage extends StatefulWidget {
@@ -60,19 +62,58 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
             )));
   }
 
+  bool isGenerating = false;
+  void _startGenerator() {
+    if (isGenerating) {
+      stopGenerator();
+      return;
+    }
+    TimerGeneration.start(intervalInSeconds: 15, upperCount: 500, max: 5);
+    showSnack(message: 'Streaming Generator started!');
+  }
+
+  void showSnack({
+    required String message,
+  }) {
+    final snackBar = SnackBar(
+      duration: const Duration(seconds: 5),
+      content: Text(message),
+    );
+    isGenerating = true;
+
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+  void stopGenerator() {
+    TimerGeneration.stop();
+    isGenerating = false;
+    showSnack(message: 'Streaming Generator stopped!!');
+  }
+
   @override
   Widget build(BuildContext context) {
     var total = 0.0;
+    var events = 0;
     for (var element in aggregates) {
       total += element.totalSpent!;
+      events += element.numberOfEvents!;
     }
-    final f = NumberFormat.compactCurrency();
+    var locale = phoneLocale.Intl.getCurrentLocale();
+
+    final f = NumberFormat.compactCurrency(locale: locale);
+    final fe = NumberFormat.compact();
+
     var amt = f.format(total);
+    var formattedEvents = fe.format(events);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('City Aggregates'),
+        title: const Text(
+          'City Aggregates',
+          style: TextStyle(fontSize: 14),
+        ),
         actions: [
           IconButton(onPressed: _getAggregates, icon: const Icon(Icons.refresh)),
+          IconButton(onPressed: _startGenerator, icon: const Icon(Icons.settings)),
         ],
       ),
       backgroundColor: Colors.brown[100],
@@ -100,20 +141,30 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
                             children: [
                               Row(
                                 children: [
-                                  const Text('Cities Aggregated:'),
+                                  const SizedBox(
+                                      width: 100,
+                                      child: Text(
+                                        'Total Cities:',
+                                        style: TextStyle(fontSize: 12),
+                                      )),
                                   const SizedBox(
                                     width: 12,
                                   ),
                                   Text(
                                     '${aggregates.length}',
                                     style: const TextStyle(
-                                        color: Colors.indigo, fontSize: 20, fontWeight: FontWeight.w900),
+                                        color: Colors.indigo, fontSize: 16, fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
                               Row(
                                 children: [
-                                  const Text('Total Amount:'),
+                                  const SizedBox(
+                                      width: 100,
+                                      child: Text(
+                                        'Total Amount:',
+                                        style: TextStyle(fontSize: 12),
+                                      )),
                                   const SizedBox(
                                     width: 12,
                                   ),
@@ -121,6 +172,24 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
                                     amt,
                                     style:
                                         const TextStyle(color: Colors.teal, fontSize: 16, fontWeight: FontWeight.w900),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  const SizedBox(
+                                      width: 100,
+                                      child: Text(
+                                        'Total Events:',
+                                        style: TextStyle(fontSize: 12),
+                                      )),
+                                  const SizedBox(
+                                    width: 12,
+                                  ),
+                                  Text(
+                                    formattedEvents,
+                                    style:
+                                        const TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
