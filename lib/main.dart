@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:universal_frontend/services/data_service.dart';
 import 'package:universal_frontend/ui/aggregates/aggregate_page.dart';
+import 'package:universal_frontend/ui/dashboard/dashboard_main.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:universal_frontend/utils/util.dart';
 
@@ -24,7 +25,7 @@ Future<void> main() async {
   p('${Emoji.brocolli} Checking for current user : FirebaseAuth');
   var user = FirebaseAuth.instance.currentUser;
   if (user == null) {
-    p('Ding Dong! new Firebase user, for now sign in anonymously $appleGreen  $appleGreen');
+    p('Ding Dong! new Firebase user, for now sign in anonymously - check that we dont create user every time $appleGreen  $appleGreen');
     await DataService.signInAnonymously();
   }
   DataService.listenForAuth();
@@ -54,8 +55,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const AggregatePage(),
-      // home: const DashboardMain(),
+      // home: const AggregatePage(),
+      home: const DashboardMain(),
     );
   }
 }

@@ -17,11 +17,13 @@ class AggregatePage extends StatefulWidget {
   AggregatePageState createState() => AggregatePageState();
 }
 
-class AggregatePageState extends State<AggregatePage> with SingleTickerProviderStateMixin {
+class AggregatePageState extends State<AggregatePage>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   var aggregates = <CityAggregate>[];
   final apiService = ApiService();
   var isLoading = false;
+  var showStop = false;
   var minutes = 60;
 
   @override
@@ -30,7 +32,9 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
     super.initState();
     p('.... initState inside AggregatePage $redDot');
     _getAggregates();
+    _listen();
   }
+
 
   void _getAggregates() async {
     p('$brocolli ... getting aggregates ...');
@@ -46,11 +50,13 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
   @override
   void dispose() {
     _controller.dispose();
+    TimerGeneration.streamController.close();
+
     super.dispose();
   }
 
   void navigateToCity({required CityAggregate agg}) {
-    p('$appleGreen $appleGreen Navigating to city:  ${agg.cityName!} ...');
+    p('$appleGreen $appleGreen Navigating to city:  ${agg.cityName} ...');
     Navigator.push(
         context,
         PageTransition(
@@ -65,11 +71,14 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
   bool isGenerating = false;
   void _startGenerator() {
     if (isGenerating) {
-      stopGenerator();
       return;
     }
-    TimerGeneration.start(intervalInSeconds: 15, upperCount: 500, max: 5);
+    TimerGeneration.start(intervalInSeconds: 15, upperCount: 200, max: 10);
     showSnack(message: 'Streaming Generator started!');
+    setState(() {
+      isGenerating = true;
+      showStop = true;
+    });
   }
 
   void showSnack({
@@ -79,15 +88,68 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
       duration: const Duration(seconds: 5),
       content: Text(message),
     );
-    isGenerating = true;
-
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
-  void stopGenerator() {
+  void _stopGenerator() {
     TimerGeneration.stop();
     isGenerating = false;
     showSnack(message: 'Streaming Generator stopped!!');
+    setState(() {
+      isGenerating = false;
+      showStop = false;
+    });
+  }
+
+  void _listen() {
+    TimerGeneration.stream.listen((timerMessage) {
+      p('$appleGreen $appleGreen $appleGreen $appleGreen  '
+          '\nTimerGeneration message arrived, statusCode: ${timerMessage.statusCode} '
+          'msg: ${timerMessage.message} $appleRed city: ${timerMessage.cityName}');
+      if (mounted) {
+        showTimerSnack(message: timerMessage);
+        if (timerMessage.statusCode == finished) {
+          setState(() {
+            isGenerating = false;
+            showStop = false;
+          });
+          _getAggregates();
+        }
+      }
+    });
+  }
+
+  void showTimerSnack({
+    required TimerMessage message,
+  }) {
+    final snackBar = SnackBar(
+      duration: const Duration(seconds: 3),
+      content: Text(
+          'Events: ${message.events} - ${message.cityName} - ${message.message} '),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+  _sortByAmount() {
+    p('$redDot sorting aggregates by totalSpent');
+    aggregates.sort((a, b) => b.totalSpent.compareTo(a.totalSpent));
+    if (aggregates.isNotEmpty) {
+      p('$appleRed $appleRed ${aggregates.first.totalSpent} - ${aggregates.first.cityName}');
+      p('$appleGreen $appleGreen ${aggregates.last.totalSpent} - ${aggregates.last.cityName}');
+    }
+    setState(() {
+
+    });
+  }
+  _sortByName() {
+    p('$redDot sorting aggregates by cityName');
+    aggregates.sort((a, b) => a.cityName.compareTo(b.cityName));
+    if (aggregates.isNotEmpty) {
+      p('$appleRed $appleRed ${aggregates.first.totalSpent} - ${aggregates.first.cityName}');
+      p('$appleGreen $appleGreen ${aggregates.last.totalSpent} - ${aggregates.last.cityName}');
+    }
+    setState(() {
+
+    });
   }
 
   @override
@@ -95,8 +157,8 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
     var total = 0.0;
     var events = 0;
     for (var element in aggregates) {
-      total += element.totalSpent!;
-      events += element.numberOfEvents!;
+      total += element.totalSpent;
+      events += element.numberOfEvents;
     }
     var locale = phoneLocale.Intl.getCurrentLocale();
 
@@ -106,30 +168,90 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
     var amt = f.format(total);
     var formattedEvents = fe.format(events);
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppBar(elevation: 0,
         title: const Text(
           'City Aggregates',
           style: TextStyle(fontSize: 14),
         ),
         actions: [
-          IconButton(onPressed: _getAggregates, icon: const Icon(Icons.refresh)),
-          IconButton(onPressed: _startGenerator, icon: const Icon(Icons.settings)),
+          IconButton(
+              onPressed: _getAggregates, icon: const Icon(Icons.refresh)),
+          isGenerating
+              ? Container()
+              : IconButton(
+                  onPressed: _startGenerator, icon: const Icon(Icons.settings)),
+          showStop
+              ? IconButton(
+                  onPressed: _stopGenerator, icon: const Icon(Icons.stop))
+              : Container(),
         ],
       ),
       backgroundColor: Colors.brown[100],
       body: Stack(
         children: [
           isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(
-                    backgroundColor: Colors.pink,
+              ? Center(
+                  child: SizedBox(
+                    height: 200,
+                    width: 260,
+                    child: Card(
+                      elevation: 16,
+                      color: Colors.amber[50],
+                      child: Center(
+                        child: Column(
+                          children: const [
+                            SizedBox(
+                              height: 60,
+                            ),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12.0),
+                              child: Text(
+                                'Aggregate calculations ...',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 20),
+                              ),
+                            ),
+                            SizedBox(
+                              height: 24,
+                            ),
+                            Center(
+                              child: SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 8,
+                                  backgroundColor: Colors.pink,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 )
               : Column(
                   children: [
-                    const SizedBox(
-                      height: 12,
+                     SizedBox(
+                      height: 40,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton(onPressed: (){
+                              _sortByAmount();
+                            }, icon: const Icon(Icons.sort)),
+                            const SizedBox(width: 16,),
+                            IconButton(onPressed: (){
+                              _sortByName();
+                            },
+                                icon: const Icon(Icons.sort_by_alpha)),
+                          ],
+                        ),
+                      ),
                     ),
+                    const SizedBox(height: 8,),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12.0),
                       child: Card(
@@ -153,9 +275,14 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
                                   Text(
                                     '${aggregates.length}',
                                     style: const TextStyle(
-                                        color: Colors.indigo, fontSize: 16, fontWeight: FontWeight.bold),
+                                        color: Colors.indigo,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(
+                                height: 4,
                               ),
                               Row(
                                 children: [
@@ -170,10 +297,15 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
                                   ),
                                   Text(
                                     amt,
-                                    style:
-                                        const TextStyle(color: Colors.teal, fontSize: 16, fontWeight: FontWeight.w900),
+                                    style: const TextStyle(
+                                        color: Colors.teal,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w900),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(
+                                height: 4,
                               ),
                               Row(
                                 children: [
@@ -188,8 +320,10 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
                                   ),
                                   Text(
                                     formattedEvents,
-                                    style:
-                                        const TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
@@ -205,7 +339,8 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
                             var agg = aggregates.elementAt(index);
                             var fm = NumberFormat.compactCurrency(symbol: 'R');
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
                               child: GestureDetector(
                                 onTap: () {
                                   navigateToCity(agg: agg);
@@ -218,15 +353,20 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
                                       children: [
                                         SizedBox(
                                             width: 60,
-                                            child: Text('${agg.averageRating?.toStringAsFixed(1)}',
-                                                style:
-                                                    const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue))),
+                                            child: Text(
+                                                agg.averageRating.toStringAsFixed(1),
+                                                style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.blue))),
                                         SizedBox(
                                             width: 80,
-                                            child: Text(fm.format(agg.totalSpent),
-                                                style: const TextStyle(fontWeight: FontWeight.w900))),
+                                            child: Text(
+                                                fm.format(agg.totalSpent),
+                                                style: const TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.w900))),
                                         Text(
-                                          '${agg.cityName}',
+                                          agg.cityName,
                                           style: const TextStyle(
                                             fontSize: 12,
                                           ),
@@ -243,9 +383,77 @@ class AggregatePageState extends State<AggregatePage> with SingleTickerProviderS
                           }),
                     ),
                   ],
+                ),
+          isGenerating
+              ? Positioned(
+                  right: 8,
+                  top: 8,
+                  child: SizedBox(
+                    height: 48,
+                    width: 48,
+                    child: Card(
+                      color: Colors.amber[200],
+                      elevation: 8,
+                      child: const Center(
+                        child: SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 6,
+                            backgroundColor: Colors.pink,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : const SizedBox(
+                  height: 0,
                 )
         ],
       ),
+      bottomNavigationBar: BottomNavigationBar(
+          elevation: 8,
+          currentIndex: 0,
+          onTap: (value) {
+            onNavTap(context, value);
+          },
+          items: const [
+            BottomNavigationBarItem(
+                icon: Icon(Icons.area_chart_sharp), label: 'Charts'),
+            BottomNavigationBarItem(
+                icon: Icon(Icons.location_on), label: 'Maps'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.list_rounded),
+              label: 'Cities',
+            ),
+          ]),
     );
   }
+
+  void onNavTap(BuildContext context, int index) {
+    switch (index) {
+      case 0:
+        navigateToCharts();
+        break;
+      case 1:
+        navigateToMap(context);
+        break;
+      case 2:
+        navigateToCityList();
+    }
+  }
+
+  void navigateToMap(BuildContext context) {
+    Navigator.push(
+        context,
+        PageTransition(
+            type: PageTransitionType.scale,
+            alignment: Alignment.bottomCenter,
+            duration: const Duration(milliseconds: 1000),
+            child: const AggregatePage()));
+  }
+
+  void navigateToCityList() {}
+  void navigateToCharts() {}
 }

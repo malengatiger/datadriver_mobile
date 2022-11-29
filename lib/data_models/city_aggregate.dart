@@ -1,12 +1,12 @@
 class CityAggregate {
-  double? averageRating;
-  String? cityId;
-  String? cityName;
-  String? date;
-  int? numberOfEvents;
-  int? hours;
-  double? totalSpent;
-  int? longDate;
+  late double averageRating;
+  late String cityId;
+  late String cityName;
+  late String date;
+  late int numberOfEvents;
+  late int hours;
+  late double totalSpent;
+  late int longDate;
 
   CityAggregate({
     required this.averageRating,
