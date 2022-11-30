@@ -27,6 +27,8 @@ Future<void> main() async {
   if (user == null) {
     p('Ding Dong! new Firebase user, for now sign in anonymously - check that we dont create user every time $appleGreen  $appleGreen');
     await DataService.signInAnonymously();
+  } else {
+    p('$blueDot User already exists. $blueDot Cool!');
   }
   DataService.listenForAuth();
   // wrap the entire app with a ProviderScope so that widgets

@@ -7,6 +7,7 @@ class CityAggregate {
   late int hours;
   late double totalSpent;
   late int longDate;
+  late double latitude, longitude;
 
   CityAggregate({
     required this.averageRating,
@@ -17,6 +18,8 @@ class CityAggregate {
     required this.hours,
     required this.totalSpent,
     required this.longDate,
+    required this.latitude,
+    required this.longitude,
   });
 
   CityAggregate.fromJson(Map<String, dynamic> json) {
@@ -28,6 +31,8 @@ class CityAggregate {
     numberOfEvents = json['numberOfEvents'];
     totalSpent = json['totalSpent'];
     longDate = json['longDate'];
+    latitude = json['latitude'];
+    longitude = json['longitude'];
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -39,5 +44,7 @@ class CityAggregate {
         'numberOfEvents': numberOfEvents,
         'longDate': longDate,
         'totalSpent': totalSpent,
+        'latitude': latitude,
+        'longitude': longitude,
       };
 }

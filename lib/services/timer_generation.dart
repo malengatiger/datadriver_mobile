@@ -29,7 +29,7 @@ class TimerGeneration {
 
   static var mCount = 0;
   static void start({required int intervalInSeconds, required int upperCount, required int max}) async {
-    cities = await dataService.getCities();
+    cities = await DataService.getCities();
     mCount = 0;
     timer = Timer.periodic(Duration(seconds: intervalInSeconds), (timer) async {
       p('$heartBlue Timer tick: ${timer.tick}');

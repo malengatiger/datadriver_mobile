@@ -94,11 +94,18 @@ class DataRepository implements AbstractDataRepository {
   @override
   Future<int> countCities() async {
     p('$blueDot $blueDot .... DataRepository counting Cities from Firestore ..');
-    var db = FirebaseFirestore.instance;
-    var aggregateQuerySnapshot = await db.collection("cities").count().get();
-    var count = aggregateQuerySnapshot.count;
-
-    p('$leaf $leaf $leaf Counted $count cities on Firestore $leaf ${DateTime.now()}');
+    var count = 0;
+    try {
+      var db = FirebaseFirestore.instance;
+      var aggregateQuerySnapshot = await db.collection("cities").count().get();
+      count = aggregateQuerySnapshot.count;
+      p('$leaf $leaf $leaf Counted $count cities on Firestore $leaf ${DateTime
+          .now()}');
+    } catch (e) {
+      p('$redDot $redDot $redDot');
+      p(e);
+      p('$redDot $redDot $redDot');
+    }
     return count;
   }
 

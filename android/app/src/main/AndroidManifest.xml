@@ -1,9 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.boha.universal_frontend">
+    <uses-permission android:name="INTERNET" />
    <application
         android:label="universal_frontend"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+
+       <meta-data android:name="com.google.android.geo.API_KEY"
+                  android:value="IzaSyBt0w2-JDGB0u_Ygvrmd8PdLV8Bd2hzB-cE"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
