@@ -1,4 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:universal_frontend/utils/emojis.dart';
+import 'package:universal_frontend/utils/util.dart';
 
 import '../repositories/event_repository.dart';
 
@@ -20,7 +22,8 @@ import '../repositories/event_repository.dart';
 // });
 
 final myEventsFutureProvider = FutureProvider((ref) async {
-  return ref.watch(dataProvider).getEventsWithinMinutes(minutes: 60);
+  p('$redDot $redDot myEventsFutureProvider about to call getEventsWithinMinutes ...');
+  return ref.watch(dataProvider).getEventsWithinMinutes(minutes: minutesAgo);
 });
 final myCitiesCountFutureProvider = FutureProvider((ref) async {
   return ref.watch(dataProvider).countCities();
@@ -41,3 +44,5 @@ final myUsersCountFutureProvider = FutureProvider((ref) async {
 //   p('$brocolli inside myCityEventGeneratorProvider ... cityId ${params.cityId}');
 //   return ref.watch(apiProvider).generateEventsByCity(cityId: params.cityId, count: params.count);
 // });
+
+var minutesAgo = 60;

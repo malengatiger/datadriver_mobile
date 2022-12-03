@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:universal_frontend/data_models/dashboard_data.dart';
 
 import '../../../data_models/event.dart';
 
@@ -8,7 +9,7 @@ class EventsByTime extends StatelessWidget {
       {Key? key,
       required this.elevation,
       this.color,
-      required this.events,
+      required this.dashboardData,
       required this.width,
       required this.height,
       required this.numberTextStyle,
@@ -17,7 +18,7 @@ class EventsByTime extends StatelessWidget {
 
   final double elevation;
   final Color? color;
-  final List<Event> events;
+  final DashboardData dashboardData;
   final double width, height;
   final TextStyle numberTextStyle, captionTextStyle;
   @override
@@ -32,10 +33,10 @@ class EventsByTime extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(
-              height: 40,
+              height: 48,
             ),
             Text(
-              f.format(events.length),
+              f.format(dashboardData.events),
               style: numberTextStyle,
             ),
             const SizedBox(

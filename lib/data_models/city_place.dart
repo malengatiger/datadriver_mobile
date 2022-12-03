@@ -25,7 +25,7 @@ class CityPlace {
   late String name;
   late List<Photo> photos;
   late String placeId;
-  late List<String> types;
+  late List<dynamic> types;
   late String vicinity;
   late String cityId;
   late String cityName;
@@ -41,7 +41,7 @@ class CityPlace {
     province = map['province'];
     name = map['name'];
     types = map['types'];
-    location = Location.fromJson(map['geometry.location']);
+    location = Location.fromJson(map['geometry']['location']);
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{

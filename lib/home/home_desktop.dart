@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:universal_frontend/home/widgets/about.dart';
+import 'package:universal_frontend/utils/providers.dart';
 
 import '../data_models/event.dart';
 import '../services/data_service.dart';
@@ -18,8 +19,8 @@ class _HomeDesktopState extends State<HomeDesktop> {
   var events = <Event>[];
 
   getEvents() async {
-    events = await DataService.getEvents(minutes: 10);
-    p('${events.length} events (10 minutes) found from Firestore $redDot');
+    events = await DataService.getEvents(minutes: minutesAgo);
+    p('${events.length} events $minutesAgo minutes found from Firestore $redDot');
   }
 
   navigateToAbout() {

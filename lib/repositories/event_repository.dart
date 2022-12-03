@@ -116,7 +116,7 @@ class DataRepository implements AbstractDataRepository {
     var aggregateQuerySnapshot = await db.collection("cityPlaces").count().get();
     var count = aggregateQuerySnapshot.count;
 
-    p('$leaf $leaf $leaf Counted $count cities on Firestore $leaf ${DateTime.now()}');
+    p('$leaf $leaf $leaf Counted $count places on Firestore $leaf ${DateTime.now()}');
     return count;
   }
 

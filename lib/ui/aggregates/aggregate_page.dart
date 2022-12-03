@@ -1,14 +1,17 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:intl/intl.dart' as phoneLocale;
 import 'package:page_transition/page_transition.dart';
 import 'package:universal_frontend/data_models/city_aggregate.dart';
-import 'package:universal_frontend/services/network_service.dart';
-import 'package:universal_frontend/ui/city/city_page.dart';
+import 'package:universal_frontend/services/api_service.dart';
 import 'package:universal_frontend/utils/emojis.dart';
+import 'package:universal_frontend/utils/providers.dart';
 
 import '../../services/timer_generation.dart';
 import '../../utils/util.dart';
+import '../city/city_map.dart';
+import '../dashboard/widgets/minutes_ago_widget.dart';
 
 class AggregatePage extends StatefulWidget {
   const AggregatePage({Key? key}) : super(key: key);
@@ -24,7 +27,7 @@ class AggregatePageState extends State<AggregatePage>
   final apiService = ApiService();
   var isLoading = false;
   var showStop = false;
-  var minutes = 60;
+  var minutes = minutesAgo;
 
   @override
   void initState() {
@@ -35,13 +38,12 @@ class AggregatePageState extends State<AggregatePage>
     _listen();
   }
 
-
   void _getAggregates() async {
     p('$brocolli ... getting aggregates ...');
     setState(() {
       isLoading = true;
     });
-    aggregates = await apiService.getCityAggregates(minutes: minutes);
+    aggregates = await apiService.getCityAggregates(minutes: minutesAgo);
     setState(() {
       isLoading = false;
     });
@@ -50,21 +52,19 @@ class AggregatePageState extends State<AggregatePage>
   @override
   void dispose() {
     _controller.dispose();
-    TimerGeneration.streamController.close();
-
     super.dispose();
   }
 
-  void navigateToCity({required CityAggregate agg}) {
-    p('$appleGreen $appleGreen Navigating to city:  ${agg.cityName} ...');
+  void navigateToCityMap({required CityAggregate agg}) {
+    p('$appleGreen $appleGreen Navigating to city map:  ${agg.cityName} ...');
     Navigator.push(
         context,
         PageTransition(
             type: PageTransitionType.scale,
             alignment: Alignment.bottomCenter,
             duration: const Duration(milliseconds: 1000),
-            child: CityPage(
-              aggregate: agg,
+            child: CityMap(
+              cityId: agg.cityId,
             )));
   }
 
@@ -103,7 +103,7 @@ class AggregatePageState extends State<AggregatePage>
 
   void _listen() {
     TimerGeneration.stream.listen((timerMessage) {
-      p('$appleGreen $appleGreen $appleGreen $appleGreen  '
+      p('$appleGreen $appleGreen $appleGreen $appleGreen  Aggregate Page listen()'
           '\nTimerGeneration message arrived, statusCode: ${timerMessage.statusCode} '
           'msg: ${timerMessage.message} $appleRed city: ${timerMessage.cityName}');
       if (mounted) {
@@ -125,10 +125,13 @@ class AggregatePageState extends State<AggregatePage>
     final snackBar = SnackBar(
       duration: const Duration(seconds: 3),
       content: Text(
-          'Events: ${message.events} - ${message.cityName} - ${message.message} '),
+        'Events: ${message.events} - ${message.cityName} ',
+        style: const TextStyle(fontSize: 12),
+      ),
     );
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
+
   _sortByAmount() {
     p('$redDot sorting aggregates by totalSpent');
     aggregates.sort((a, b) => b.totalSpent.compareTo(a.totalSpent));
@@ -136,10 +139,9 @@ class AggregatePageState extends State<AggregatePage>
       p('$appleRed $appleRed ${aggregates.first.totalSpent} - ${aggregates.first.cityName}');
       p('$appleGreen $appleGreen ${aggregates.last.totalSpent} - ${aggregates.last.cityName}');
     }
-    setState(() {
-
-    });
+    setState(() {});
   }
+
   _sortByName() {
     p('$redDot sorting aggregates by cityName');
     aggregates.sort((a, b) => a.cityName.compareTo(b.cityName));
@@ -147,9 +149,7 @@ class AggregatePageState extends State<AggregatePage>
       p('$appleRed $appleRed ${aggregates.first.totalSpent} - ${aggregates.first.cityName}');
       p('$appleGreen $appleGreen ${aggregates.last.totalSpent} - ${aggregates.last.cityName}');
     }
-    setState(() {
-
-    });
+    setState(() {});
   }
 
   @override
@@ -160,19 +160,116 @@ class AggregatePageState extends State<AggregatePage>
       total += element.totalSpent;
       events += element.numberOfEvents;
     }
-    var locale = phoneLocale.Intl.getCurrentLocale();
 
-    final f = NumberFormat.compactCurrency(locale: locale);
+    var currencyFormat =
+        NumberFormat.compactCurrency(locale: Platform.localeName)
+            .currencySymbol;
+    var f = NumberFormat.compactCurrency(symbol: currencyFormat);
     final fe = NumberFormat.compact();
-
     var amt = f.format(total);
     var formattedEvents = fe.format(events);
     return Scaffold(
-      appBar: AppBar(elevation: 0,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.brown[100],
         title: const Text(
-          'City Aggregates',
-          style: TextStyle(fontSize: 14),
+          'Aggregates',
+          style: TextStyle(fontSize: 14, color: Colors.black),
         ),
+        bottom: PreferredSize(
+            preferredSize: aggregates.isEmpty
+                ? const Size.fromHeight(120)
+                : const Size.fromHeight(130),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                  child: Card(
+                    elevation: 4,
+                    color: Colors.brown[50],
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              const SizedBox(
+                                  width: 100,
+                                  child: Text(
+                                    'Total Cities:',
+                                    style: TextStyle(fontSize: 12),
+                                  )),
+                              const SizedBox(
+                                width: 12,
+                              ),
+                              Text(
+                                '${aggregates.length}',
+                                style: const TextStyle(
+                                    color: Colors.indigo,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(
+                            height: 4,
+                          ),
+                          Row(
+                            children: [
+                              const SizedBox(
+                                  width: 100,
+                                  child: Text(
+                                    'Total Amount:',
+                                    style: TextStyle(fontSize: 12),
+                                  )),
+                              const SizedBox(
+                                width: 12,
+                              ),
+                              Text(
+                                amt,
+                                style: const TextStyle(
+                                    color: Colors.teal,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(
+                            height: 4,
+                          ),
+                          Row(
+                            children: [
+                              const SizedBox(
+                                  width: 100,
+                                  child: Text(
+                                    'Total Events:',
+                                    style: TextStyle(fontSize: 12),
+                                  )),
+                              const SizedBox(
+                                width: 12,
+                              ),
+                              Text(
+                                formattedEvents,
+                                style: const TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12,),
+                InkWell(
+                  onTap: _getAggregates,
+                  child: const MinutesAgoWidget(),
+
+                ),
+              ],
+            )),
         actions: [
           IconButton(
               onPressed: _getAggregates, icon: const Icon(Icons.refresh)),
@@ -196,7 +293,10 @@ class AggregatePageState extends State<AggregatePage>
                     width: 260,
                     child: Card(
                       elevation: 16,
-                      color: Colors.amber[50],
+                      color: Colors.brown[50],shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.0),
+                    ),
+
                       child: Center(
                         child: Column(
                           children: const [
@@ -208,7 +308,8 @@ class AggregatePageState extends State<AggregatePage>
                               child: Text(
                                 'Aggregate calculations ...',
                                 style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 20),
+                                    fontWeight: FontWeight.normal,
+                                    fontSize: 12),
                               ),
                             ),
                             SizedBox(
@@ -232,107 +333,58 @@ class AggregatePageState extends State<AggregatePage>
                 )
               : Column(
                   children: [
-                     SizedBox(
+                    SizedBox(
                       height: 40,
                       child: Padding(
                         padding: const EdgeInsets.all(8.0),
-                        child: Row(
+                        child: aggregates.isEmpty? const SizedBox(height: 0,):Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            IconButton(onPressed: (){
-                              _sortByAmount();
-                            }, icon: const Icon(Icons.sort)),
-                            const SizedBox(width: 16,),
-                            IconButton(onPressed: (){
-                              _sortByName();
-                            },
+                            // Text('${aggregates.length}', style: const TextStyle(fontWeight: FontWeight.w900),),
+                            // const SizedBox(width: 4,),
+                            const Text('Sort By', style: TextStyle(fontSize: 12),),
+                            const SizedBox(width: 4,),
+                            IconButton(
+                                onPressed: () {
+                                  _sortByAmount();
+                                },
+                                icon: const Icon(Icons.sort)),
+                            const SizedBox(
+                              width: 8,
+                            ),
+                            IconButton(
+                                onPressed: () {
+                                  _sortByName();
+                                },
                                 icon: const Icon(Icons.sort_by_alpha)),
                           ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8,),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                      child: Card(
-                        elevation: 8,
-                        color: Colors.pink[50],
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Column(
+                    const SizedBox(
+                      height: 8,
+                    ),
+                    aggregates.isEmpty?  Center(
+                      child: Column(
+                        children:  [
+                          const SizedBox(height: 60,),
+                          const Text('No aggregate data',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),),
+                          const SizedBox(height: 8,),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Row(
-                                children: [
-                                  const SizedBox(
-                                      width: 100,
-                                      child: Text(
-                                        'Total Cities:',
-                                        style: TextStyle(fontSize: 12),
-                                      )),
-                                  const SizedBox(
-                                    width: 12,
-                                  ),
-                                  Text(
-                                    '${aggregates.length}',
-                                    style: const TextStyle(
-                                        color: Colors.indigo,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 4,
-                              ),
-                              Row(
-                                children: [
-                                  const SizedBox(
-                                      width: 100,
-                                      child: Text(
-                                        'Total Amount:',
-                                        style: TextStyle(fontSize: 12),
-                                      )),
-                                  const SizedBox(
-                                    width: 12,
-                                  ),
-                                  Text(
-                                    amt,
-                                    style: const TextStyle(
-                                        color: Colors.teal,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w900),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 4,
-                              ),
-                              Row(
-                                children: [
-                                  const SizedBox(
-                                      width: 100,
-                                      child: Text(
-                                        'Total Events:',
-                                        style: TextStyle(fontSize: 12),
-                                      )),
-                                  const SizedBox(
-                                    width: 12,
-                                  ),
-                                  Text(
-                                    formattedEvents,
-                                    style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
+                              const Text('Tap'),
+                              const SizedBox(width: 4,),
+                              IconButton(onPressed: _getAggregates, icon: const Icon(Icons.refresh)),
+                              const SizedBox(width: 4,),
+                              const Text('to refresh data'),
+                              const SizedBox(width: 12,),
                             ],
                           ),
-                        ),
+                        ],
                       ),
-                    ),
-                    Expanded(
+                    ) : Expanded(
                       child: ListView.builder(
                           itemCount: aggregates.length,
                           itemBuilder: (context, index) {
@@ -343,7 +395,7 @@ class AggregatePageState extends State<AggregatePage>
                                   const EdgeInsets.symmetric(horizontal: 12),
                               child: GestureDetector(
                                 onTap: () {
-                                  navigateToCity(agg: agg);
+                                  navigateToCityMap(agg: agg);
                                 },
                                 child: Card(
                                   elevation: 2,
@@ -354,7 +406,8 @@ class AggregatePageState extends State<AggregatePage>
                                         SizedBox(
                                             width: 60,
                                             child: Text(
-                                                agg.averageRating.toStringAsFixed(1),
+                                                agg.averageRating
+                                                    .toStringAsFixed(1),
                                                 style: const TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     color: Colors.blue))),
@@ -412,7 +465,7 @@ class AggregatePageState extends State<AggregatePage>
                 )
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: aggregates.isEmpty? null: BottomNavigationBar(
           elevation: 8,
           currentIndex: 0,
           onTap: (value) {

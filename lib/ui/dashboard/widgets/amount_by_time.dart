@@ -1,14 +1,19 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:universal_frontend/data_models/dashboard_data.dart';
+import 'package:universal_frontend/utils/emojis.dart';
 
 import '../../../data_models/event.dart';
+import '../../../utils/util.dart';
 
 class AmountByTime extends StatelessWidget {
   const AmountByTime(
       {Key? key,
       required this.elevation,
       this.color,
-      required this.events,
+      required this.dashboardData,
       required this.width,
       required this.height,
       required this.numberTextStyle,
@@ -17,16 +22,15 @@ class AmountByTime extends StatelessWidget {
 
   final double elevation;
   final Color? color;
-  final List<Event> events;
+  final DashboardData dashboardData;
   final double width, height;
   final TextStyle numberTextStyle, captionTextStyle;
   @override
   Widget build(BuildContext context) {
-    double total = 0;
-    for (var element in events) {
-      total += element.amount;
-    }
-    var f = NumberFormat.compact();
+
+    p('$redDot $redDot AmountByTime build, dashboardData: ${dashboardData.toJson()}');
+    var currencySymbol = NumberFormat.compactCurrency(locale: Platform.localeName).currencySymbol;
+    var currencyFormatter = NumberFormat.compact();
     return SizedBox(
       height: height,
       width: width,
@@ -39,10 +43,10 @@ class AmountByTime extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(
-                height: 40,
+                height: 48,
               ),
               Text(
-                f.format(total),
+                currencyFormatter.format(dashboardData.amount),
                 style: numberTextStyle,
               ),
               const SizedBox(

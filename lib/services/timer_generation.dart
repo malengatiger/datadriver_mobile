@@ -5,7 +5,7 @@ import '../data_models/city.dart';
 import '../utils/emojis.dart';
 import '../utils/util.dart';
 import 'data_service.dart';
-import 'network_service.dart';
+import 'api_service.dart';
 
 const finished = 200, processedCity = 201, error = 500 ;
 

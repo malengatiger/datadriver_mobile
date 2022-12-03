@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:universal_frontend/data_models/dashboard_data.dart';
 
 import '../../../data_models/event.dart';
 
@@ -7,7 +8,7 @@ class RatingByTime extends StatelessWidget {
       {Key? key,
       required this.elevation,
       this.color,
-      required this.events,
+      required this.dashData,
       required this.width,
       required this.height,
       required this.numberTextStyle,
@@ -16,20 +17,13 @@ class RatingByTime extends StatelessWidget {
 
   final double elevation;
   final Color? color;
-  final List<Event> events;
+  final DashboardData dashData;
   final double width, height;
   final TextStyle numberTextStyle, captionTextStyle;
 
   @override
   Widget build(BuildContext context) {
-    var total = 0;
-    for (var element in events) {
-      total += element.rating;
-    }
-    var avg = '0.0';
-    if (events.isNotEmpty) {
-      avg = (total / events.length).toStringAsFixed(2);
-    }
+    var avg = dashData.averageRating.toStringAsFixed(2);
     return Card(
         elevation: elevation,
         color: color ?? Colors.white,
@@ -39,7 +33,7 @@ class RatingByTime extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(
-              height: 40,
+              height: 48,
             ),
             Text(
               avg,
@@ -49,7 +43,7 @@ class RatingByTime extends StatelessWidget {
               height: 8,
             ),
             Text(
-              'Rating',
+              'Average Rating',
               style: captionTextStyle,
             ),
           ],

@@ -5,6 +5,7 @@ import 'package:universal_frontend/home/widgets/about.dart';
 import '../data_models/event.dart';
 import '../services/data_service.dart';
 import '../utils/emojis.dart';
+import '../utils/providers.dart';
 import '../utils/util.dart';
 
 class HomeMobile extends StatefulWidget {
@@ -17,8 +18,8 @@ class HomeMobile extends StatefulWidget {
 class _HomeMobileState extends State<HomeMobile> {
   var events = <Event>[];
   void getEvents() async {
-    events = await DataService.getEvents(minutes: 10);
-    p('${events.length} events (10 minutes) found from Firestore $redDot');
+    events = await DataService.getEvents(minutes: minutesAgo);
+    p('${events.length} events $minutesAgo minutes found from Firestore $redDot');
   }
 
   Widget getBody() {

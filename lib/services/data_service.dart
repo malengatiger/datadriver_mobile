@@ -8,9 +8,8 @@ import '../utils/emojis.dart';
 import '../utils/util.dart';
 
 class DataService {
-  static late FirebaseFirestore db;
   init() {
-    db = FirebaseFirestore.instance;
+    var db = FirebaseFirestore.instance;
     p("$appleGreen  $appleGreen $appleGreen FirebaseFirestore.instance: "
         "${db.app.name} $appleRed DataService constructed, FirebaseFirestore instance created ");
   }
@@ -105,28 +104,33 @@ class DataService {
 
   static Future<List<Event>> getEvents({required int minutes}) async {
     p('$blueDot $blueDot .... DataService getting Events in the last $minutes minutes from Firestore ..');
-    db = FirebaseFirestore.instance;
+    var db = FirebaseFirestore.instance;
     var list = <Event>[];
     var date = DateTime.now().subtract(Duration(minutes: minutes));
     var data =
-        await db.collection("flatEvents").where("longDate", isGreaterThanOrEqualTo: date.millisecondsSinceEpoch).get();
+        await db.collection("flatEvents")
+            .where("longDate", isGreaterThanOrEqualTo: date.millisecondsSinceEpoch)
+            .get();
     for (var doc in data.docs) {
       var mJson = doc.data();
       var event = Event.fromJson(mJson);
       list.add(event);
     }
-    p('$leaf $leaf $leaf Found ${list.length} events on Firestore $leaf ${DateTime.now()}');
+    p('$leaf $leaf $leaf Found ${list.length} '
+        'events on Firestore $leaf ${DateTime.now()}');
     return list;
   }
   static Future<List<Event>> getCityEvents({required String cityId, required int minutes}) async {
-    p('$blueDot $blueDot .... DataService getting City Events in the last $minutes minutes from Firestore ..');
-    db = FirebaseFirestore.instance;
+    p('$blueDot $blueDot .... DataService getting City Events '
+        'in the last $minutes minutes from Firestore ..');
+    var db = FirebaseFirestore.instance;
     var list = <Event>[];
     var date = DateTime.now().subtract(Duration(minutes: minutes));
     var data =
         await db.collection("flatEvents")
             .where('cityId', isEqualTo: cityId)
             .where("longDate", isGreaterThanOrEqualTo: date.millisecondsSinceEpoch)
+            .orderBy('longDate', descending: true)
             .get();
     for (var doc in data.docs) {
       var mJson = doc.data();
@@ -140,7 +144,7 @@ class DataService {
 
   static Future<List<CityPlace>> getCityPlaces({required String cityId}) async {
     p('$blueDot $blueDot .... DataService getting City places from Firestore ..');
-    db = FirebaseFirestore.instance;
+    var db = FirebaseFirestore.instance;
     var list = <CityPlace>[];
     var data =
     await db.collection("cityPlaces")
@@ -159,6 +163,7 @@ class DataService {
 
   static Future<List<City>> getCities() async {
     p('$blueDot $blueDot .... DataService getting Cities from Firestore ..');
+    var db = FirebaseFirestore.instance;
     var list = <City>[];
     var data = await db.collection("cities").orderBy('city').get();
     for (var doc in data.docs) {
@@ -173,21 +178,26 @@ class DataService {
   static Future<City?> getCity({required String cityId}) async {
     p('$blueDot $blueDot .... DataService getting City from Firestore ..');
     City? city;
+    var db = FirebaseFirestore.instance;
     var data = await db.collection("cities")
-        .where('cityId', isEqualTo: cityId).get();
+        .where('id', isEqualTo: cityId)
+        .get();
+
     for (var doc in data.docs) {
       var mJson = doc.data();
       city = City.fromJson(mJson);
     }
     if (city != null) {
-      p('$leaf $leaf $leaf Found ${city.city}  on Firestore $leaf ${DateTime
+      p('$leaf $leaf $redDot Found city ${city.city} on Firestore $redDot ${DateTime
           .now()}');
+      p(city.toJson());
     }
     return city;
   }
 
   static Future<int> getEventCount() async {
     p('$heartBlue .... DataService getting Total Events from Firestore ..');
+    var db = FirebaseFirestore.instance;
 
     var count = db.collection('events').count();
     var m = await count.get();
