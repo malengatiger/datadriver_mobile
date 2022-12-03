@@ -10,13 +10,10 @@ import 'package:intl/intl.dart';
 import 'package:universal_frontend/data_models/event.dart';
 import 'package:universal_frontend/services/data_service.dart';
 import 'package:universal_frontend/utils/emojis.dart';
+import 'package:universal_frontend/utils/providers.dart';
 import 'dart:ui' as ui;
-import 'package:intl/intl.dart' as phone_locale;
-
-
 import '../../data_models/city.dart';
 import '../../data_models/city_place.dart';
-import '../../utils/providers.dart';
 import '../../utils/util.dart';
 import '../dashboard/widgets/minutes_ago_widget.dart';
 
@@ -31,7 +28,7 @@ class CityMap extends StatefulWidget {
 
 class CityMapState extends State<CityMap> {
   // final Completer<GoogleMapController> _mapController = Completer();
-  late GoogleMapController _mapController;
+  late GoogleMapController googleMapController;
 
   static const CameraPosition _inTheAtlanticOcean = CameraPosition(
     target: LatLng(0.0, 0.0),
@@ -84,19 +81,26 @@ class CityMapState extends State<CityMap> {
   }
 
   _getEvents() async {
-    events =
-        await DataService.getCityEvents(cityId: widget.cityId, minutes: 240);
+    events = await DataService.getCityEvents(
+        cityId: widget.cityId, minutes: minutesAgo);
     p('$diamond $diamond CityMap: Found ${events.length} events on Firestore');
-
   }
 
+  var totalCityAmount = 0.0;
+  var totalCityRating = 0;
+  var averageCityRating = 0.0;
+
   void processHashMap(HashMap<String, List<Event>> hash) {
+    totalCityAmount = 0.0;
+    totalCityRating = 0;
     hash.forEach((key, list) {
       var totalAmount = 0.0;
       var totalRating = 0;
       for (var value in list) {
         totalAmount += value.amount;
         totalRating += value.rating;
+        totalCityAmount += value.amount;
+        totalCityRating += value.rating;
       }
       Event? event;
       var avg = double.parse('$totalRating') / double.parse('${list.length}');
@@ -115,6 +119,9 @@ class CityMapState extends State<CityMap> {
         placeAggregates.add(agg);
       }
     });
+
+    averageCityRating =
+        double.parse('$totalCityRating') / double.parse('${events.length}');
   }
 
   HashMap<String, List<Event>> _buildHashMap() {
@@ -134,7 +141,7 @@ class CityMapState extends State<CityMap> {
     return hash;
   }
 
-   _getPlaces() async {
+  _getPlaces() async {
     places = await DataService.getCityPlaces(cityId: widget.cityId);
     p('$diamond $diamond CityMap: Found ${places.length} city places on Firestore');
   }
@@ -142,7 +149,7 @@ class CityMapState extends State<CityMap> {
   Future<void> _putPlaceAggregateMarkersOnMap() async {
     p('$diamond $diamond CityMap: ... putting place aggregate markers on map, '
         'aggregates:: ${placeAggregates.length}');
-    final Uint8List markIcon = await getImage(images[1], 100);
+    final Uint8List markIcon = await getImage(images[2], 100);
     _markers.clear();
     for (var agg in placeAggregates) {
       var marker = Marker(
@@ -160,11 +167,9 @@ class CityMapState extends State<CityMap> {
     }
     var latLng =
         LatLng(placeAggregates.first.latitude, placeAggregates.first.longitude);
-    _mapController.animateCamera(CameraUpdate.newLatLngZoom(latLng, 16));
+    googleMapController.animateCamera(CameraUpdate.newLatLngZoom(latLng, 14));
     p('$diamond $diamond CityMap: ... finished putting place aggregate markers on map');
-    setState(() {
-
-    });
+    setState(() {});
   }
 
   _showPlaceAggregate(PlaceAggregate agg) {
@@ -173,6 +178,7 @@ class CityMapState extends State<CityMap> {
       _showPlace = true;
     });
   }
+
   _closePlaceAggregate() {
     setState(() {
       placeAggregate = null;
@@ -200,59 +206,87 @@ class CityMapState extends State<CityMap> {
   ];
 
   final List<Marker> _markers = <Marker>[];
-  var numberFormat = NumberFormat.compactCurrency();
+  final numberFormat = NumberFormat.compact();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.brown[100],
-        title: isLoading? const Text('City Map Loading ...', style: TextStyle(fontSize: 12),) :
-        Text('${city?.city}, ${city?.adminName}', style: const TextStyle(fontSize: 12, color: Colors.black),),
+        title: isLoading
+            ? const Text(
+                'City Map Loading ...',
+                style: TextStyle(fontSize: 12),
+              )
+            : Text(
+                '${city?.city}, ${city?.adminName}',
+                style: const TextStyle(fontSize: 12, color: Colors.black),
+              ),
         actions: [
           IconButton(onPressed: _getData, icon: const Icon(Icons.refresh)),
         ],
-        bottom: PreferredSize(preferredSize: const Size.fromHeight(20), child: Column(
-          children:  [
-            GestureDetector(
-                onTap: _getData,
-                child: const MinutesAgoWidget()),
-            const SizedBox(height: 12,)
-          ],
-        )),
+        bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(80),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Events',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                    const SizedBox(
+                      width: 4,
+                    ),
+                    Text(numberFormat.format(events.length),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(
+                      width: 8,
+                    ),
+                    const Text(
+                      'Average Rating',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                    const SizedBox(
+                      width: 4,
+                    ),
+                    Text(averageCityRating.toStringAsFixed(2),
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 4,),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 8,
+                    ),
+                    const Text(
+                      'Amount',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                    const SizedBox(
+                      width: 4,
+                    ),
+                    Text(numberFormat.format(totalCityAmount),
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w900))
+                  ],
+                ),
+                const SizedBox(
+                  height: 8,
+                ),
+                GestureDetector(
+                    onTap: _getData, child: const MinutesAgoWidget()),
+                const SizedBox(
+                  height: 12,
+                )
+              ],
+            )),
       ),
       backgroundColor: Colors.brown[100],
-      body: isLoading
-          ? Center(
-              child: SizedBox(
-                width: 240,
-                height: 240,
-                child: Card(
-                  elevation: 8,
-                  color: Colors.brown[50],
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.0),
-                  ),
-                  child: Column(
-                    children: const [
-                      SizedBox(height: 80,),
-                      Text('Loading data ...'),
-                      SizedBox(
-                        height: 24,
-                      ),
-                      SizedBox(
-                        height: 24, width: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 8,
-                          backgroundColor: Colors.pink,
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              ),
-            )
-          : Stack(
+      body:  Stack(
               children: [
                 GoogleMap(
                   mapType: MapType.hybrid,
@@ -265,22 +299,57 @@ class CityMapState extends State<CityMap> {
                   myLocationEnabled: true,
                   onMapCreated: (GoogleMapController controller) {
                     p('$brocolli $brocolli onMapCreated: map is created and ready for markers!');
-                    _mapController = controller;
+                    googleMapController = controller;
                   },
                 ),
-                _showPlace? Positioned(
-                    right: 8, top: 16,
-                    child:  PlaceCard(aggregate: placeAggregate!,
-                      onClose: () {
-                        _closePlaceAggregate();
-                      })) : const SizedBox(height: 0,),
+                isLoading? Center(
+                  child: SizedBox(
+                    width: 240,
+                    height: 240,
+                    child: Card(
+                      elevation: 8,
+                      color: Colors.brown[50],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.0),
+                      ),
+                      child: Column(
+                        children: const [
+                          SizedBox(
+                            height: 80,
+                          ),
+                          Text('Loading data ...'),
+                          SizedBox(
+                            height: 24,
+                          ),
+                          SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 8,
+                              backgroundColor: Colors.pink,
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+                ): const SizedBox(height: 0,),
+                _showPlace
+                    ? Positioned(
+                        right: 8,
+                        top: 16,
+                        child: PlaceCard(
+                            aggregate: placeAggregate!,
+                            onClose: () {
+                              _closePlaceAggregate();
+                            }))
+                    : const SizedBox(
+                        height: 0,
+                      ),
               ],
             ),
-
     );
   }
-
-
 }
 
 class PlaceAggregate {
@@ -301,16 +370,21 @@ class PlaceAggregate {
 }
 
 class PlaceCard extends StatelessWidget {
-  const PlaceCard({Key? key, required this.aggregate, required this.onClose}) : super(key: key);
+  const PlaceCard({Key? key, required this.aggregate, required this.onClose})
+      : super(key: key);
   final PlaceAggregate aggregate;
   final Function onClose;
 
   @override
   Widget build(BuildContext context) {
-    var currencyFormat = NumberFormat.compactCurrency(locale: Platform.localeName).currencySymbol;
+    var currencyFormat =
+        NumberFormat.compactCurrency(locale: Platform.localeName)
+            .currencySymbol;
     var numberFormat = NumberFormat.compactCurrency(symbol: currencyFormat);
 
-    return SizedBox(width: 300, height: 280,
+    return SizedBox(
+      width: 300,
+      height: 280,
       child: Card(
         elevation: 16,
         color: Colors.brown[100],
@@ -324,41 +398,62 @@ class PlaceCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  IconButton(onPressed: () {
-                    onClose();
-                  }, icon: const Icon(Icons.close)),
+                  IconButton(
+                      onPressed: () {
+                        onClose();
+                      },
+                      icon: const Icon(Icons.close)),
                   const SizedBox(width: 0),
                 ],
               ),
-              Text(aggregate.name,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),),
-              const SizedBox(height: 16,),
+              Text(
+                aggregate.name,
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(
+                height: 16,
+              ),
               Row(
                 children: [
                   const SizedBox(width: 120, child: Text('Events:')),
-                  Text('${aggregate.events}', style: const TextStyle(fontSize:16, fontWeight: FontWeight.bold),),
+                  Text(
+                    '${aggregate.events}',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
-
-              const SizedBox(height: 4,),
+              const SizedBox(
+                height: 4,
+              ),
               Row(
                 children: [
                   const SizedBox(width: 120, child: Text('Average Rating:')),
-                  Text(aggregate.averageRating.toStringAsFixed(2),
-                    style:  TextStyle(
-                        color: aggregate.averageRating < 3.0? Colors.pink[700]:Colors.black,
-                        fontSize:16, fontWeight: FontWeight.bold),),
+                  Text(
+                    aggregate.averageRating.toStringAsFixed(2),
+                    style: TextStyle(
+                        color: aggregate.averageRating < 3.0
+                            ? Colors.pink[700]
+                            : Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
-              const SizedBox(height: 24,),
+              const SizedBox(
+                height: 24,
+              ),
               Row(
                 children: [
-                  const SizedBox(width:80, child: Text('Amount:')),
-                  Text(numberFormat.format(aggregate.totalSpent),
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),),
+                  const SizedBox(width: 80, child: Text('Amount:')),
+                  Text(
+                    numberFormat.format(aggregate.totalSpent),
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w900),
+                  ),
                 ],
               ),
-
             ],
           ),
         ),
@@ -366,4 +461,3 @@ class PlaceCard extends StatelessWidget {
     );
   }
 }
-
