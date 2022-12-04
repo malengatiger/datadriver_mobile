@@ -43,7 +43,7 @@ class RatingByTime extends StatelessWidget {
               height: 8,
             ),
             Text(
-              'Average Rating',
+              'Rating',
               style: captionTextStyle,
             ),
           ],

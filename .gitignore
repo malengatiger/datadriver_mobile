@@ -1,5 +1,6 @@
 # See https://www.dartlang.org/guides/libraries/private-files
-
+web/index.html
+android/app/src/main/AndroidManifest.xml
 # Files and directories created by pub
 .dart_tool/
 .packages

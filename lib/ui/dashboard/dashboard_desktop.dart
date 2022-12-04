@@ -13,14 +13,14 @@ import '../../utils/util.dart';
 import '../aggregates/aggregate_page.dart';
 import '../dashboard/widgets/dash_grid.dart';
 
-class DashboardMobile extends StatefulWidget {
-  const DashboardMobile({Key? key}) : super(key: key);
+class DashboardDesktop extends StatefulWidget {
+  const DashboardDesktop({Key? key}) : super(key: key);
 
   @override
-  State<DashboardMobile> createState() => DashboardMobileState();
+  State<DashboardDesktop> createState() => DashboardDesktopState();
 }
 
-class DashboardMobileState extends State<DashboardMobile> {
+class DashboardDesktopState extends State<DashboardDesktop> {
   bool showStop = false;
   bool isRefresh = false, isLoading = false;
   bool isGenerating = false;
@@ -209,11 +209,11 @@ class DashboardMobileState extends State<DashboardMobile> {
                           height: 120,
                           width: 240,
                           backgroundColor: Colors.brown.shade100,
-                          gridColumns: 2,
+                          gridColumns: 3,
                           captionTextStyle: const TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.normal),
+                              fontSize: 24, fontWeight: FontWeight.normal),
                           numberTextStyle: const TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w900),
+                              fontSize: 36, fontWeight: FontWeight.w900),
                           dashboardData: dashData!,
                         ),
                 ),
@@ -271,6 +271,38 @@ class DashboardMobileState extends State<DashboardMobile> {
                   height: 0,
                 ),
         ],
+      ),
+      drawer: Drawer(
+
+        // Add a ListView to the drawer. This ensures the user can scroll
+        // through the options in the drawer if there isn't enough vertical
+        // space to fit everything.
+        child: ListView(
+          // Important: Remove any padding from the ListView.
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: Text('Drawer Header'),
+            ),
+            ListTile(
+              title: const Text('Item 1'),
+              onTap: () {
+                // Update the state of the app.
+                // ...
+              },
+            ),
+            ListTile(
+              title: const Text('Item 2'),
+              onTap: () {
+                // Update the state of the app.
+                // ...
+              },
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: dashData?.events == 0? const SizedBox(): BottomNavigationBar(
           elevation: 8,

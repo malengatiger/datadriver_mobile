@@ -29,7 +29,7 @@ class AmountByTime extends StatelessWidget {
   Widget build(BuildContext context) {
 
     p('$redDot $redDot AmountByTime build, dashboardData: ${dashboardData.toJson()}');
-    var currencySymbol = NumberFormat.compactCurrency(locale: Platform.localeName).currencySymbol;
+    // var currencySymbol = NumberFormat.compactCurrency(locale: Platform.localeName).currencySymbol;
     var currencyFormatter = NumberFormat.compact();
     return SizedBox(
       height: height,

@@ -62,8 +62,9 @@ dependencies:
   google_maps_flutter: ^2.2.1
   font_awesome_flutter: ^10.2.1
 #  platform: ^2.2.0
-
   riverpod_annotation:
+  side_navigation: ^1.0.4
+  google_maps_flutter_web: ^0.4.0+3
 
 
 dev_dependencies:

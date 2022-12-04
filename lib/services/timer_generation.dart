@@ -13,7 +13,6 @@ class TimerMessage {
   late String date, message;
   late int statusCode, events;
   String? cityName;
-
   TimerMessage({required this.date, required this.message, required this.statusCode, this.cityName, required this.events});
 }
 
