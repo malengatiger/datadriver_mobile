@@ -65,6 +65,8 @@ dependencies:
   riverpod_annotation:
   side_navigation: ^1.0.4
   google_maps_flutter_web: ^0.4.0+3
+  flutter_web_data_table: ^1.0.0
+  google_fonts: ^3.0.1
 
 
 dev_dependencies:

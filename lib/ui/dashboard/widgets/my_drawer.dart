@@ -1,48 +1,60 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class MyDrawer extends StatelessWidget {
-  const MyDrawer({Key? key, required this.onSelected}) : super(key: key);
+  const MyDrawer({Key? key, required this.onSelected, this.backgroundColor}) : super(key: key);
   final Function(int) onSelected;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 300,
-      color: Colors.brown[100],
+      width: 260,
+      color: backgroundColor?? Colors.brown[50],
       child: Column(
         children: [
           Card(
             elevation: 4,
               child: Image.asset('assets/images/m2.jpg', fit: BoxFit.fill,)),
           const SizedBox(height: 8,),
-          const Text('Navigation'),
-          const SizedBox(height: 20,),
+           Text('Data is good to play with, Senor!', style: GoogleFonts.lato(
+              textStyle: Theme.of(context).textTheme.bodyMedium, fontWeight: FontWeight.normal),
+              ),
+          const SizedBox(height: 60,),
           Expanded(child: ListView(
             children:  [
               ListTile(
                 leading: const Icon(Icons.dashboard),
-                title: const Text('Dashboard'),
+                title:  Text('Dashboard',style: GoogleFonts.lato(
+                    textStyle: Theme.of(context).textTheme.bodyMedium, fontWeight: FontWeight.normal),
+                ),
                 onTap: () {
                   onSelected(0);
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.list),
-                title: const Text('City Aggregated Data'),
+                title:  Text('City Aggregated Data',style: GoogleFonts.lato(
+                    textStyle: Theme.of(context).textTheme.bodyMedium, fontWeight: FontWeight.normal),
+                ),
                 onTap: () {
                   onSelected(1);
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.location_on),
-                title: const Text('City Maps'),
+                title:  Text('City Maps',style: GoogleFonts.lato(
+                    textStyle: Theme.of(context).textTheme.bodyMedium, fontWeight: FontWeight.normal),
+                ),
                 onTap: () {
                   onSelected(2);
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.generating_tokens),
-                title: const Text('Data Generation'),
+                title:  Text('Data Generation',style: GoogleFonts.lato(
+                    textStyle: Theme.of(context).textTheme.bodyMedium, fontWeight: FontWeight.normal),
+                ),
                 onTap: () {
                   onSelected(3);
                 },

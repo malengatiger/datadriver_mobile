@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:universal_frontend/data_models/dashboard_data.dart';
 
@@ -24,6 +25,10 @@ class RatingByTime extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var avg = dashData.averageRating.toStringAsFixed(2);
+    var mTop = 48.0;
+    if (kIsWeb) {
+      mTop = 100.0;
+    }
     return Card(
         elevation: elevation,
         color: color ?? Colors.white,
@@ -32,8 +37,8 @@ class RatingByTime extends StatelessWidget {
         ),
         child: Column(
           children: [
-            const SizedBox(
-              height: 48,
+             SizedBox(
+              height: mTop,
             ),
             Text(
               avg,

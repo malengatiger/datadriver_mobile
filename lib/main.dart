@@ -31,6 +31,9 @@ Future<void> main() async {
     p('$blueDot User already exists. $blueDot Cool!');
   }
   DataService.listenForAuth();
+  if (kIsWeb) {
+    p('💙💙💙💙💙 We are running on the web!');
+  }
   // wrap the entire app with a ProviderScope so that widgets
   // will be able to read providers
   runApp(ProviderScope(

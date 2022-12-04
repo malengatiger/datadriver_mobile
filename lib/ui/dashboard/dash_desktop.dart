@@ -2,8 +2,13 @@ import 'package:emoji_alert/arrays.dart';
 import 'package:emoji_alert/emoji_alert.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:page_transition/page_transition.dart';
 import 'package:side_navigation/side_navigation.dart';
+import 'package:universal_frontend/data_models/city_aggregate.dart';
+import 'package:universal_frontend/ui/aggregates/aggregate_page.dart';
 import 'package:universal_frontend/ui/city/cities_map.dart';
+import 'package:universal_frontend/ui/city/city_map.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/dash_grid.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/my_drawer.dart';
 
@@ -132,14 +137,25 @@ class DashDesktopState extends State<DashDesktop>
     switch (selectedIndex) {
       case 0:
         return dashData == null
-            ? const Center(
+            ?  Center(
             child: SizedBox(
               height: 200,
               width: 200,
-              child: Text(
-                'No data yet',
-                style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.w900),
+              child: Column(
+                children: const [
+                  Text(
+                    'No data yet ...',
+                    style: TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w900),
+                  ),
+                  SizedBox(height: 20,),
+                  SizedBox(width: 24, height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 6,
+                      backgroundColor: Colors.pink,
+                    ),
+                  ),
+                ],
               ),
             ))
             : Padding(
@@ -149,28 +165,40 @@ class DashDesktopState extends State<DashDesktop>
             height: 120,
             width: 240,
             backgroundColor: Colors.brown.shade100,
-            gridColumns: 3,
+            gridColumns: 2,
             captionTextStyle: const TextStyle(
                 fontSize: 12, fontWeight: FontWeight.normal),
-            numberTextStyle: const TextStyle(
-                fontSize: 32, fontWeight: FontWeight.w900),
+            numberTextStyle: GoogleFonts.secularOne(
+                textStyle: Theme.of(context).textTheme.headlineLarge, fontWeight: FontWeight.w900),
             dashboardData: dashData!,
           ),
         );
         break;
       case 1:
-        return Container(color: Colors.teal,);
+        return  AggregatePage(onSelected: (agg) {
+          p('$redDot $redDot navigating to city map: ${agg.cityName}');
+          navigateToCityMap(context: context, aggregate: agg);
+        },);
         break;
       case 2:
         return CitiesMap(dashboardData: dashData,);
         break;
       case 3:
-        return Container(color: Colors.indigo,);
+        return Container(color: Colors.teal,);
         break;
     }
     return const Center(
       child: Text('Something not on? '),
     );
+  }
+  void navigateToCityMap({required BuildContext context, required CityAggregate aggregate}) {
+    Navigator.push(
+        context,
+        PageTransition(
+            type: PageTransitionType.scale,
+            alignment: Alignment.bottomCenter,
+            duration: const Duration(milliseconds: 1000),
+            child:  CityMap(cityId: aggregate.cityId)));
   }
   _onSelected(int index) {
     setState(() {

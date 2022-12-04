@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:universal_frontend/data_models/dashboard_data.dart';
@@ -31,6 +32,10 @@ class AmountByTime extends StatelessWidget {
     p('$redDot $redDot AmountByTime build, dashboardData: ${dashboardData.toJson()}');
     // var currencySymbol = NumberFormat.compactCurrency(locale: Platform.localeName).currencySymbol;
     var currencyFormatter = NumberFormat.compact();
+    var mTop = 48.0;
+    if (kIsWeb) {
+      mTop = 100.0;
+    }
     return SizedBox(
       height: height,
       width: width,
@@ -42,8 +47,8 @@ class AmountByTime extends StatelessWidget {
           ),
           child: Column(
             children: [
-              const SizedBox(
-                height: 48,
+               SizedBox(
+                height: mTop,
               ),
               Text(
                 currencyFormatter.format(dashboardData.amount),

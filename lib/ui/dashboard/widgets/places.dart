@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -27,7 +28,10 @@ class Places extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     var f = NumberFormat.compact();
-
+    var mTop = 48.0;
+    if (kIsWeb) {
+      mTop = 100.0;
+    }
     return Card(
         elevation: elevation,
         color: color ?? Colors.white,
@@ -36,8 +40,8 @@ class Places extends StatelessWidget {
         ),
         child: Column(
           children: [
-            const SizedBox(
-              height: 48,
+             SizedBox(
+              height: mTop,
             ),
             Text(
               f.format(dashboardData.places),

@@ -9,6 +9,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:universal_frontend/data_models/event.dart';
 import 'package:universal_frontend/services/data_service.dart';
+import 'package:universal_frontend/ui/city/city_map_header.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:universal_frontend/utils/providers.dart';
 import 'dart:ui' as ui;
@@ -52,7 +53,6 @@ class CityMapState extends State<CityMap> {
   @override
   void initState() {
     super.initState();
-    _getData();
   }
 
   Future<void> _getData() async {
@@ -66,11 +66,10 @@ class CityMapState extends State<CityMap> {
 
     HashMap<String, List<Event>> hash = _buildHashMap();
     processHashMap(hash);
-    _putPlaceAggregateMarkersOnMap();
-
     setState(() {
       isLoading = false;
     });
+    _putPlaceAggregateMarkersOnMap();
   }
 
   _getCity() async {
@@ -154,7 +153,7 @@ class CityMapState extends State<CityMap> {
     for (var agg in placeAggregates) {
       var marker = Marker(
         markerId: MarkerId(agg.placeId),
-        icon: BitmapDescriptor.fromBytes(markIcon),
+        // icon: BitmapDescriptor.fromBytes(markIcon),
         position: LatLng(agg.latitude, agg.longitude),
         infoWindow: InfoWindow(
             title: agg.name,
@@ -226,62 +225,14 @@ class CityMapState extends State<CityMap> {
           IconButton(onPressed: _getData, icon: const Icon(Icons.refresh)),
         ],
         bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(80),
+            preferredSize: const Size.fromHeight(28),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'Events',
-                      style: TextStyle(fontSize: 10),
-                    ),
-                    const SizedBox(
-                      width: 4,
-                    ),
-                    Text(numberFormat.format(events.length),
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(
-                      width: 8,
-                    ),
-                    const Text(
-                      'Average Rating',
-                      style: TextStyle(fontSize: 10),
-                    ),
-                    const SizedBox(
-                      width: 4,
-                    ),
-                    Text(averageCityRating.toStringAsFixed(2),
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                const SizedBox(height: 4,),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(
-                      width: 8,
-                    ),
-                    const Text(
-                      'Amount',
-                      style: TextStyle(fontSize: 10),
-                    ),
-                    const SizedBox(
-                      width: 4,
-                    ),
-                    Text(numberFormat.format(totalCityAmount),
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w900))
-                  ],
-                ),
-                const SizedBox(
-                  height: 8,
-                ),
-                GestureDetector(
-                    onTap: _getData, child: const MinutesAgoWidget()),
-                const SizedBox(
-                  height: 12,
-                )
+                CityMapHeader(events: events.length,
+                  averageRating: averageCityRating, onRequestRefresh: () {
+                  _getData();
+                  }, totalAmount: totalCityAmount,),
+                const SizedBox(height: 8,),
               ],
             )),
       ),
@@ -300,36 +251,40 @@ class CityMapState extends State<CityMap> {
                   onMapCreated: (GoogleMapController controller) {
                     p('$brocolli $brocolli onMapCreated: map is created and ready for markers!');
                     googleMapController = controller;
+                    _getData();
                   },
                 ),
-                isLoading? Center(
-                  child: SizedBox(
-                    width: 240,
-                    height: 240,
-                    child: Card(
-                      elevation: 8,
-                      color: Colors.brown[50],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16.0),
-                      ),
-                      child: Column(
-                        children: const [
-                          SizedBox(
-                            height: 80,
-                          ),
-                          Text('Loading data ...'),
-                          SizedBox(
-                            height: 24,
-                          ),
-                          SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 8,
-                              backgroundColor: Colors.pink,
+                isLoading? Positioned(
+                  left: 48, top: 200,
+                  child: Center(
+                    child: SizedBox(
+                      width: 240,
+                      height: 240,
+                      child: Card(
+                        elevation: 8,
+                        color: Colors.brown[50],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16.0),
+                        ),
+                        child: Column(
+                          children: const [
+                            SizedBox(
+                              height: 80,
                             ),
-                          )
-                        ],
+                            Text('Loading data ...'),
+                            SizedBox(
+                              height: 24,
+                            ),
+                            SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 8,
+                                backgroundColor: Colors.pink,
+                              ),
+                            )
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -377,10 +332,10 @@ class PlaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var currencyFormat =
-        NumberFormat.compactCurrency(locale: Platform.localeName)
-            .currencySymbol;
-    var numberFormat = NumberFormat.compactCurrency(symbol: currencyFormat);
+    // var currencyFormat =
+    //     NumberFormat.compactCurrency(locale: Platform.localeName)
+    //         .currencySymbol;
+    var numberFormat = NumberFormat.compact();
 
     return SizedBox(
       width: 300,
