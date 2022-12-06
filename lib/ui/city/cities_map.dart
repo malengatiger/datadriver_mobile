@@ -95,7 +95,7 @@ class CitiesMapState extends State<CitiesMap> {
     }
     var latLng =
         LatLng(cities.first.latitude, cities.first.longitude);
-    googleMapController!.animateCamera(CameraUpdate.newLatLngZoom(latLng, 8));
+    googleMapController!.animateCamera(CameraUpdate.newLatLngZoom(latLng, 6));
     p('$diamond $diamond CitiesMap: ... finished putting city markers on map');
     setState(() {});
   }

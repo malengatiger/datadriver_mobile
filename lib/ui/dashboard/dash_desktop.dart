@@ -18,6 +18,7 @@ import '../../services/timer_generation.dart';
 import '../../utils/emojis.dart';
 import '../../utils/providers.dart';
 import '../../utils/util.dart';
+import '../generation/generation_page.dart';
 
 class DashDesktop extends StatefulWidget {
   const DashDesktop({Key? key}) : super(key: key);
@@ -37,7 +38,6 @@ class DashDesktopState extends State<DashDesktop>
   void initState() {
     _controller = AnimationController(vsync: this);
     super.initState();
-    // _listen();
     _getDashboardData();
   }
 
@@ -49,6 +49,7 @@ class DashDesktopState extends State<DashDesktop>
     try {
       dashData = await apiService.getDashboardData(minutesAgo: minutesAgo);
     } catch (e) {
+      p('$redDot get data failed');
       var em = EmojiAlert(
         emojiType: EMOJI_TYPE.ANGRY,
         description: Text('$e'),
@@ -66,70 +67,6 @@ class DashDesktopState extends State<DashDesktop>
     super.dispose();
   }
 
-  void _startGenerator() {
-    if (isGenerating) {
-      return;
-    }
-    TimerGeneration.start(intervalInSeconds: 5, upperCount: 200, max: 3);
-    _showSnack(message: 'Streaming Generator started!');
-    setState(() {
-      isGenerating = true;
-      showStop = true;
-    });
-  }
-
-  void _showSnack({
-    required String message,
-  }) {
-    final snackBar = SnackBar(
-      duration: const Duration(seconds: 5),
-      content: Text(message),
-    );
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
-
-  void _stopGenerator() {
-    TimerGeneration.stop();
-    isGenerating = false;
-    _showSnack(message: 'Streaming Generator stopped!!');
-    setState(() {
-      isGenerating = false;
-      showStop = false;
-    });
-  }
-
-  void _listen() {
-    TimerGeneration.stream.listen((timerMessage) {
-      p('$diamond $diamond $diamond $diamond  Dashboard Mobile listening'
-          '\nTimerGeneration message arrived, statusCode: ${timerMessage.statusCode} '
-          'msg: ${timerMessage.message} $appleRed city: ${timerMessage.cityName}');
-      if (mounted) {
-        if (timerMessage.statusCode == finished) {
-          setState(() {
-            isGenerating = false;
-            showStop = false;
-          });
-          _showSnack(message: 'Generation completed!, will refresh');
-          _getDashboardData();
-        } else {
-          showTimerSnack(message: timerMessage);
-        }
-      }
-    });
-  }
-
-  void showTimerSnack({
-    required TimerMessage message,
-  }) {
-    final snackBar = SnackBar(
-      duration: const Duration(seconds: 3),
-      content: Text(
-        'Events: ${message.events} - ${message.cityName}',
-        style: const TextStyle(fontSize: 12),
-      ),
-    );
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
 
   bool showTimeChooser = false, isGenerating = false, showStop = false;
   var selectedIndex = 0;
@@ -204,7 +141,20 @@ class DashDesktopState extends State<DashDesktop>
     setState(() {
       selectedIndex = index;
     });
+    if (index == 3) {
+      _navigateToGenerator();
+    }
   }
+  void _navigateToGenerator() {
+    Navigator.push(
+        context,
+        PageTransition(
+            type: PageTransitionType.scale,
+            alignment: Alignment.bottomCenter,
+            duration: const Duration(milliseconds: 1000),
+            child: const GenerationPage()));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -231,18 +181,7 @@ class DashDesktopState extends State<DashDesktop>
                 Icons.refresh,
                 color: Colors.black,
               )),
-          isGenerating
-              ? Container()
-              : IconButton(
-                  onPressed: _startGenerator,
-                  icon: const Icon(
-                    Icons.settings,
-                    color: Colors.black,
-                  )),
-          showStop
-              ? IconButton(
-                  onPressed: _stopGenerator, icon: const Icon(Icons.stop))
-              : Container(),
+
         ],
       ),
       backgroundColor: Colors.brown[100],

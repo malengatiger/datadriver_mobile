@@ -5,6 +5,7 @@ import 'package:universal_frontend/data_models/dashboard_data.dart';
 import 'package:universal_frontend/services/api_service.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/minutes_ago_widget.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/time_chooser.dart';
+import 'package:universal_frontend/ui/generation/generation_page.dart';
 
 import '../../services/timer_generation.dart';
 import '../../utils/emojis.dart';
@@ -29,7 +30,6 @@ class DashboardMobileState extends State<DashboardMobile> {
   @override
   void initState() {
     super.initState();
-    _listen();
     _getDashboardData();
   }
 
@@ -42,71 +42,6 @@ class DashboardMobileState extends State<DashboardMobile> {
     setState(() {
       isLoading = false;
     });
-  }
-
-  void _startGenerator() {
-    if (isGenerating) {
-      return;
-    }
-    TimerGeneration.start(intervalInSeconds: 5, upperCount: 200, max: 3);
-    _showSnack(message: 'Streaming Generator started!');
-    setState(() {
-      isGenerating = true;
-      showStop = true;
-    });
-  }
-
-  void _showSnack({
-    required String message,
-  }) {
-    final snackBar = SnackBar(
-      duration: const Duration(seconds: 5),
-      content: Text(message),
-    );
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
-
-  void _stopGenerator() {
-    TimerGeneration.stop();
-    isGenerating = false;
-    _showSnack(message: 'Streaming Generator stopped!!');
-    setState(() {
-      isGenerating = false;
-      showStop = false;
-    });
-  }
-
-  void _listen() {
-    TimerGeneration.stream.listen((timerMessage) {
-      p('$diamond $diamond $diamond $diamond  Dashboard Mobile listening'
-          '\nTimerGeneration message arrived, statusCode: ${timerMessage.statusCode} '
-          'msg: ${timerMessage.message} $appleRed city: ${timerMessage.cityName}');
-      if (mounted) {
-        if (timerMessage.statusCode == finished) {
-          setState(() {
-            isGenerating = false;
-            showStop = false;
-          });
-          _showSnack(message: 'Generation completed!, will refresh');
-          _getDashboardData();
-        } else {
-          showTimerSnack(message: timerMessage);
-        }
-      }
-    });
-  }
-
-  void showTimerSnack({
-    required TimerMessage message,
-  }) {
-    final snackBar = SnackBar(
-      duration: const Duration(seconds: 3),
-      content: Text(
-        'Events: ${message.events} - ${message.cityName}',
-        style: const TextStyle(fontSize: 12),
-      ),
-    );
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
   bool showTimeChooser = false;
@@ -149,18 +84,7 @@ class DashboardMobileState extends State<DashboardMobile> {
                   Icons.refresh,
                   color: Colors.black,
                 )),
-            isGenerating
-                ? Container()
-                : IconButton(
-                    onPressed: _startGenerator,
-                    icon: const Icon(
-                      Icons.settings,
-                      color: Colors.black,
-                    )),
-            showStop
-                ? IconButton(
-                    onPressed: _stopGenerator, icon: const Icon(Icons.stop))
-                : Container(),
+
           ]),
       backgroundColor: Colors.brown.shade100,
       body: Stack(
@@ -282,7 +206,7 @@ class DashboardMobileState extends State<DashboardMobile> {
             BottomNavigationBarItem(
                 icon: Icon(Icons.list), label: 'Aggregates'),
             BottomNavigationBarItem(
-                icon: Icon(Icons.location_on), label: 'Map'),
+                icon: Icon(Icons.access_alarm), label: 'Generator'),
             BottomNavigationBarItem(
               icon: Icon(Icons.area_chart_sharp),
               label: 'Charts',
@@ -297,10 +221,10 @@ class DashboardMobileState extends State<DashboardMobile> {
         navigateToAggregates(context);
         break;
       case 1:
-        navigateToGenerator();
+        _navigateToGenerator();
         break;
       case 2:
-        navigateToACityList();
+        _navigateToACityList();
     }
   }
 
@@ -314,9 +238,17 @@ class DashboardMobileState extends State<DashboardMobile> {
             child: const AggregatePage()));
   }
 
-  void navigateToACityList() {}
+  void _navigateToACityList() {}
 
-  void navigateToGenerator() {}
+  void _navigateToGenerator() {
+    Navigator.push(
+        context,
+        PageTransition(
+            type: PageTransitionType.scale,
+            alignment: Alignment.bottomCenter,
+            duration: const Duration(milliseconds: 1000),
+            child: const GenerationPage()));
+  }
 
   onTimeSelected(double p1) {
     minutesAgo = p1.toInt();

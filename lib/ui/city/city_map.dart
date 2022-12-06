@@ -225,7 +225,7 @@ class CityMapState extends State<CityMap> {
           IconButton(onPressed: _getData, icon: const Icon(Icons.refresh)),
         ],
         bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(28),
+            preferredSize: const Size.fromHeight(20),
             child: Column(
               children: [
                 CityMapHeader(events: events.length,

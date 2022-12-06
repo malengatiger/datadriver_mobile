@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:universal_frontend/data_models/city_aggregate.dart';
@@ -14,6 +15,7 @@ import '../../services/timer_generation.dart';
 import '../../utils/util.dart';
 import '../city/city_map.dart';
 import '../dashboard/widgets/minutes_ago_widget.dart';
+import 'aggregates_map.dart';
 
 class AggregatePage extends StatefulWidget {
   const AggregatePage({Key? key, this.onSelected}) : super(key: key);
@@ -33,14 +35,12 @@ class AggregatePageState extends State<AggregatePage>
   var minutes = minutesAgo;
   var sortBy = 0;
 
-
   @override
   void initState() {
     _controller = AnimationController(vsync: this);
     super.initState();
     p('.... initState inside AggregatePage $redDot');
     _getAggregates();
-    _listen();
   }
 
   void _getAggregates() async {
@@ -60,6 +60,7 @@ class AggregatePageState extends State<AggregatePage>
     super.dispose();
   }
 
+
   void navigateToCityMap({required CityAggregate agg}) {
     p('$appleGreen $appleGreen Navigating to city map:  ${agg.cityName} ...');
     Navigator.push(
@@ -71,57 +72,6 @@ class AggregatePageState extends State<AggregatePage>
             child: CityMap(
               cityId: agg.cityId,
             )));
-  }
-
-  bool isGenerating = false;
-  void _startGenerator() {
-    if (isGenerating) {
-      return;
-    }
-    TimerGeneration.start(intervalInSeconds: 15, upperCount: 200, max: 10);
-    showSnack(message: 'Streaming Generator started!');
-    setState(() {
-      isGenerating = true;
-      showStop = true;
-    });
-  }
-
-  void showSnack({
-    required String message,
-  }) {
-    final snackBar = SnackBar(
-      duration: const Duration(seconds: 5),
-      content: Text(message),
-    );
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-  }
-
-  void _stopGenerator() {
-    TimerGeneration.stop();
-    isGenerating = false;
-    showSnack(message: 'Streaming Generator stopped!!');
-    setState(() {
-      isGenerating = false;
-      showStop = false;
-    });
-  }
-
-  void _listen() {
-    TimerGeneration.stream.listen((timerMessage) {
-      p('$appleGreen $appleGreen $appleGreen $appleGreen  Aggregate Page listen()'
-          '\nTimerGeneration message arrived, statusCode: ${timerMessage.statusCode} '
-          'msg: ${timerMessage.message} $appleRed city: ${timerMessage.cityName}');
-      if (mounted) {
-        showTimerSnack(message: timerMessage);
-        if (timerMessage.statusCode == finished) {
-          setState(() {
-            isGenerating = false;
-            showStop = false;
-          });
-          _getAggregates();
-        }
-      }
-    });
   }
 
   void showTimerSnack({
@@ -140,25 +90,26 @@ class AggregatePageState extends State<AggregatePage>
   _sortByAmount() {
     p('$redDot sorting aggregates by totalSpent');
     aggregates.sort((a, b) => b.totalSpent.compareTo(a.totalSpent));
-    if (aggregates.isNotEmpty) {
-      p('$appleRed $appleRed ${aggregates.first.totalSpent} - ${aggregates.first.cityName}');
-      p('$appleGreen $appleGreen ${aggregates.last.totalSpent} - ${aggregates.last.cityName}');
-    }
+    setState(() {});
+  }
+
+  _sortByRating() {
+    p('$redDot sorting aggregates by rating');
+    aggregates.sort((a, b) => b.averageRating.compareTo(a.averageRating));
     setState(() {});
   }
 
   _sortByName() {
     p('$redDot sorting aggregates by cityName');
     aggregates.sort((a, b) => a.cityName.compareTo(b.cityName));
-    if (aggregates.isNotEmpty) {
-      p('$appleRed $appleRed ${aggregates.first.totalSpent} - ${aggregates.first.cityName}');
-      p('$appleGreen $appleGreen ${aggregates.last.totalSpent} - ${aggregates.last.cityName}');
-    }
     setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
+    final thinStyle = GoogleFonts.lato(
+        textStyle: Theme.of(context).textTheme.bodySmall,
+        fontWeight: FontWeight.normal);
     var total = 0.0;
     var events = 0;
     for (var element in aggregates) {
@@ -193,6 +144,9 @@ class AggregatePageState extends State<AggregatePage>
                         padding: const EdgeInsets.symmetric(horizontal: 12.0),
                         child: Card(
                           elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.0),
+                          ),
                           color: Colors.brown[50],
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
@@ -281,211 +235,284 @@ class AggregatePageState extends State<AggregatePage>
               actions: [
                 IconButton(
                     onPressed: _getAggregates, icon: const Icon(Icons.refresh)),
-                isGenerating
-                    ? Container()
-                    : IconButton(
-                        onPressed: _startGenerator,
-                        icon: const Icon(Icons.settings)),
-                showStop
-                    ? IconButton(
-                        onPressed: _stopGenerator, icon: const Icon(Icons.stop))
-                    : Container(),
               ],
             ),
       backgroundColor: Colors.brown[100],
-      body: Stack(
-        children: [
-          isLoading
-              ? Center(
-                  child: SizedBox(
-                    height: 200,
-                    width: 260,
-                    child: Card(
-                      elevation: 16,
-                      color: Colors.brown[50],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16.0),
-                      ),
-                      child: Center(
-                        child: Column(
-                          children: const [
-                            SizedBox(
-                              height: 60,
+      body: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Card(
+          elevation: 8,
+          color: Colors.brown[50],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Stack(
+              children: [
+                isLoading
+                    ? Center(
+                        child: SizedBox(
+                          height: 200,
+                          width: 260,
+                          child: Card(
+                            elevation: 16,
+                            color: Colors.brown[50],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.0),
                             ),
-                            Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 12.0),
-                              child: Text(
-                                'Aggregate calculations ...',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.normal,
-                                    fontSize: 12),
-                              ),
-                            ),
-                            SizedBox(
-                              height: 24,
-                            ),
-                            Center(
-                              child: SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 8,
-                                  backgroundColor: Colors.pink,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              : Column(
-                  children: [
-                    kIsWeb
-                        ? const SizedBox(
-                            height: 80,
-                            child: MinutesAgoWidget(),
-                          )
-                        : const SizedBox(
-                            height: 0,
-                          ),
-
-                    aggregates.isEmpty
-                        ? Center(
-                            child: Column(
-                              children: [
-                                const SizedBox(
-                                  height: 60,
-                                ),
-                                const Text(
-                                  'No aggregate data',
-                                  style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w900),
-                                ),
-                                const SizedBox(
-                                  height: 8,
-                                ),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Text('Tap'),
-                                    const SizedBox(
-                                      width: 4,
+                            child: Center(
+                              child: Column(
+                                children: const [
+                                  SizedBox(
+                                    height: 60,
+                                  ),
+                                  Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(horizontal: 12.0),
+                                    child: Text(
+                                      'Aggregate calculations ...',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.normal,
+                                          fontSize: 12),
                                     ),
-                                    IconButton(
-                                        onPressed: _getAggregates,
-                                        icon: const Icon(Icons.refresh)),
-                                    const SizedBox(
-                                      width: 4,
-                                    ),
-                                    const Text('to refresh data'),
-                                    const SizedBox(
-                                      width: 12,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          )
-                        : Expanded(
-                            child: kIsWeb? CityAggregateTable(aggregates: aggregates,
-                              sortBy: sortBy, onSelected: (cityAggregate ) {
-                                p('$brocolli city aggregate selected: ${cityAggregate.toJson()}');
-                                if (widget.onSelected != null) {
-                                  widget.onSelected!(cityAggregate);
-                                }
-                                },) : ListView.builder(
-                                itemCount: aggregates.length,
-                                itemBuilder: (context, index) {
-                                  var agg = aggregates.elementAt(index);
-                                  var fm =
-                                      NumberFormat.compactCurrency(symbol: 'R');
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12),
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        navigateToCityMap(agg: agg);
-                                      },
-                                      child: Card(
-                                        elevation: 2,
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Row(
-                                            children: [
-                                              SizedBox(
-                                                  width: 60,
-                                                  child: Text(
-                                                      agg.averageRating
-                                                          .toStringAsFixed(1),
-                                                      style: const TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: Colors.blue))),
-                                              SizedBox(
-                                                  width: 80,
-                                                  child: Text(
-                                                      f.format(agg.numberOfEvents),
-                                                      style: const TextStyle(
-                                                          fontWeight: FontWeight
-                                                              .bold))),
-                                              SizedBox(
-                                                  width: 80,
-                                                  child: Text(
-                                                      fm.format(agg.totalSpent),
-                                                      style: const TextStyle(
-                                                          fontWeight: FontWeight
-                                                              .w900))),
-                                              Text(
-                                                agg.cityName,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                              const SizedBox(
-                                                width: 8,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
+                                  ),
+                                  SizedBox(
+                                    height: 24,
+                                  ),
+                                  Center(
+                                    child: SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 8,
+                                        backgroundColor: Colors.pink,
                                       ),
                                     ),
-                                  );
-                                }),
-                          ),
-                  ],
-                ),
-          isGenerating
-              ? Positioned(
-                  right: 8,
-                  top: 8,
-                  child: SizedBox(
-                    height: 48,
-                    width: 48,
-                    child: Card(
-                      color: Colors.amber[200],
-                      elevation: 8,
-                      child: const Center(
-                        child: SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 6,
-                            backgroundColor: Colors.pink,
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
+                      )
+                    : Column(
+                        children: [
+                          kIsWeb //todo check!!!
+                              ? const SizedBox(
+                                  height: 80,
+                                  child: MinutesAgoWidget(),
+                                )
+                              : const SizedBox(
+                                  height: 0,
+                                ),
+                          aggregates.isEmpty
+                              ? Center(
+                                  child: Column(
+                                    children: [
+                                      const SizedBox(
+                                        height: 60,
+                                      ),
+                                      const Text(
+                                        'No aggregate data',
+                                        style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w900),
+                                      ),
+                                      const SizedBox(
+                                        height: 8,
+                                      ),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Text('Tap'),
+                                          const SizedBox(
+                                            width: 4,
+                                          ),
+                                          IconButton(
+                                              onPressed: _getAggregates,
+                                              icon: const Icon(Icons.refresh)),
+                                          const SizedBox(
+                                            width: 4,
+                                          ),
+                                          const Text('to refresh data'),
+                                          const SizedBox(
+                                            width: 12,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : Expanded(
+                                  child: kIsWeb
+                                      ? CityAggregateTable(
+                                          aggregates: aggregates,
+                                          sortBy: sortBy,
+                                          onSelected: (cityAggregate) {
+                                            p('$brocolli city aggregate selected: ${cityAggregate.toJson()}');
+                                            if (widget.onSelected != null) {
+                                              widget.onSelected!(cityAggregate);
+                                            }
+                                          },
+                                        )
+                                      : Padding(
+                                          padding: const EdgeInsets.only(
+                                              bottom: 8.0),
+                                          child: ListView.builder(
+                                              itemCount: aggregates.length,
+                                              itemBuilder: (context, index) {
+                                                var agg =
+                                                    aggregates.elementAt(index);
+                                                var fm = NumberFormat.compact();
+                                                return Padding(
+                                                  padding: const EdgeInsets
+                                                          .symmetric(
+                                                      horizontal: 12),
+                                                  child: PopupMenuButton(
+                                                    elevation: 8,
+                                                    color: Colors.brown[50],
+                                                    onSelected: (value) {
+                                                      p('$redDot PopupMenuButton: onSelected: $value');
+                                                    },
+                                                    itemBuilder: (context) {
+                                                      return [
+                                                        PopupMenuItem(
+                                                          value: 'goToMap',
+                                                          onTap: () {
+                                                            p('$redDot PopupMenuItem: city menu item tapped, goToMap: ${agg.cityName}');
+                                                            navigateToCityMap( agg: agg);
+                                                          },
+                                                          child: ListTile(
+                                                            title: Text(
+                                                              'Go to Map',
+                                                              style: thinStyle,
+                                                            ),
+                                                            leading: const Icon(
+                                                                Icons
+                                                                    .location_on),
+                                                          ),
+                                                        ),
+                                                        PopupMenuItem(
+                                                          value: 'sortByAmount',
+                                                          onTap: () {
+                                                            p('$redDot PopupMenuItem: Sort By Amount tapped');
+                                                            _sortByAmount();
+                                                          },
+                                                          child: ListTile(
+                                                            leading: const Icon(
+                                                                Icons
+                                                                    .sort_by_alpha),
+                                                            title: Text(
+                                                              'Sort By Amount',
+                                                              style: thinStyle,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        PopupMenuItem(
+                                                          value: 'sortByName',
+                                                          onTap: () {
+                                                            p('$redDot PopupMenuItem: Sort By Name tapped');
+                                                            _sortByName();
+                                                          },
+                                                          child: ListTile(
+                                                            leading: const Icon(
+                                                                Icons
+                                                                    .sort_by_alpha),
+                                                            title: Text(
+                                                              'Sort By Name',
+                                                              style: thinStyle,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        PopupMenuItem(
+                                                          value: 'sortByRating',
+                                                          onTap: () {
+                                                            p('$redDot PopupMenuItem: Sort By Rating tapped');
+                                                            _sortByRating();
+                                                          },
+                                                          child: ListTile(
+                                                            leading: const Icon(
+                                                                Icons
+                                                                    .sort_by_alpha),
+                                                            title: Text(
+                                                              'Sort By Rating',
+                                                              style: thinStyle,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ];
+                                                    },
+                                                    child: Card(
+                                                      elevation: 1,
+                                                      shape:
+                                                          RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8.0),
+                                                      ),
+                                                      child: Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(8.0),
+                                                        child: Row(
+                                                          children: [
+                                                            SizedBox(
+                                                                width: 40,
+                                                                child: Text(
+                                                                    agg.averageRating
+                                                                        .toStringAsFixed(
+                                                                            1),
+                                                                    style: const TextStyle(
+                                                                        fontWeight:
+                                                                            FontWeight
+                                                                                .bold,
+                                                                        color: Colors
+                                                                            .blue))),
+                                                            // SizedBox(
+                                                            //     width: 60,
+                                                            //     child: Text(
+                                                            //         f.format(agg.numberOfEvents),
+                                                            //         style: const TextStyle(
+                                                            //             fontWeight: FontWeight
+                                                            //                 .bold))),
+                                                            SizedBox(
+                                                                width: 80,
+                                                                child: Text(
+                                                                    fm.format(agg
+                                                                        .totalSpent),
+                                                                    style: const TextStyle(
+                                                                        fontWeight:
+                                                                            FontWeight.w900))),
+                                                            Flexible(
+                                                              child: Text(
+                                                                agg.cityName,
+                                                                style:
+                                                                    const TextStyle(
+                                                                  fontSize: 12,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                              width: 8,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                );
+                                              }),
+                                        ),
+                                ),
+                        ],
                       ),
-                    ),
-                  ),
-                )
-              : const SizedBox(
-                  height: 0,
-                )
-        ],
+              ],
+            ),
+          ),
+        ),
       ),
-
       bottomNavigationBar: aggregates.isEmpty
           ? null
           : BottomNavigationBar(
@@ -527,9 +554,10 @@ class AggregatePageState extends State<AggregatePage>
             type: PageTransitionType.scale,
             alignment: Alignment.bottomCenter,
             duration: const Duration(milliseconds: 1000),
-            child: const AggregatePage()));
+            child:  AggregatesMap(aggregates: aggregates,)));
   }
 
   void navigateToCityList() {}
+
   void navigateToCharts() {}
 }

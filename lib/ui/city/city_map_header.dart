@@ -20,118 +20,94 @@ class CityMapHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final numberFormat = NumberFormat.compact();
-    if (kIsWeb) {
-      return Column(
+    if (kIsWeb) { //TODO - check also for size - mobiles going to url!!!
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Events',
-                style: TextStyle(fontSize: 10),
-              ),
-              const SizedBox(
-                width: 4,
-              ),
-              Text(numberFormat.format(events),
-                  style: GoogleFonts.secularOne(
-                      textStyle: Theme.of(context).textTheme.bodyMedium,
-                      fontWeight: FontWeight.w900),),
-              const SizedBox(
-                width: 16,
-              ),
-              const Text(
-                'Average Rating',
-                style: TextStyle(fontSize: 10),
-              ),
-              const SizedBox(
-                width: 4,
-              ),
-              Text(averageRating.toStringAsFixed(2),
-                  style: GoogleFonts.secularOne(
-                      textStyle: Theme.of(context).textTheme.bodyMedium,
-                      fontWeight: FontWeight.w900),),
-              const SizedBox(
-                width: 16,
-              ),
-              const Text(
-                'Amount',
-                style: TextStyle(fontSize: 10),
-              ),
-              const SizedBox(
-                width: 4,
-              ),
-              Text(numberFormat.format(totalAmount),
-                  style: GoogleFonts.secularOne(
-                      textStyle: Theme.of(context).textTheme.bodyMedium,
-                      fontWeight: FontWeight.w900),
-              )
-            ],
+          const Text(
+            'Events',
+            style: TextStyle(fontSize: 10),
           ),
+          const SizedBox(
+            width: 4,
+          ),
+          Text(numberFormat.format(events),
+              style: GoogleFonts.secularOne(
+                  textStyle: Theme.of(context).textTheme.bodyMedium,
+                  fontWeight: FontWeight.w900),),
+          const SizedBox(
+            width: 16,
+          ),
+          const Text(
+            'Rating',
+            style: TextStyle(fontSize: 10),
+          ),
+          const SizedBox(
+            width: 4,
+          ),
+          Text(averageRating.toStringAsFixed(2),
+              style: GoogleFonts.secularOne(
+                  textStyle: Theme.of(context).textTheme.bodyMedium,
+                  fontWeight: FontWeight.w900),),
+          const SizedBox(
+            width: 16,
+          ),
+          const Text(
+            'Amount',
+            style: TextStyle(fontSize: 10),
+          ),
+          const SizedBox(
+            width: 4,
+          ),
+          Text(numberFormat.format(totalAmount),
+              style: GoogleFonts.secularOne(
+                  textStyle: Theme.of(context).textTheme.bodyMedium,
+                  fontWeight: FontWeight.w900),
+          )
         ],
       );
     } else {
-      return Column(
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Events',
-                style: TextStyle(fontSize: 10),
-              ),
-              const SizedBox(
-                width: 4,
-              ),
-              Text(numberFormat.format(events),
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(
-                width: 8,
-              ),
-              const Text(
-                'Average Rating',
-                style: TextStyle(fontSize: 10),
-              ),
-              const SizedBox(
-                width: 4,
-              ),
-              Text(averageRating.toStringAsFixed(2),
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
-            ],
+          const Text(
+            'Events',
+            style: TextStyle(fontSize: 10),
           ),
           const SizedBox(
-            height: 4,
+            width: 4,
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(
-                width: 8,
-              ),
-              const Text(
-                'Amount',
-                style: TextStyle(fontSize: 10),
-              ),
-              const SizedBox(
-                width: 4,
-              ),
-              Text(numberFormat.format(totalAmount),
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w900))
-            ],
+          Text(numberFormat.format(events),
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(
+            width: 8,
+          ),
+          const Text(
+            'Rating',
+            style: TextStyle(fontSize: 10),
           ),
           const SizedBox(
-            height: 8,
+            width: 4,
           ),
-          GestureDetector(
-              onTap: () {
-                onRequestRefresh();
-              },
-              child: const MinutesAgoWidget()),
+          Text(averageRating.toStringAsFixed(2),
+              style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(
-            height: 12,
-          )
-        ],
+            width: 4,
+          ),
+          const SizedBox(
+            width: 8,
+          ),
+          const Text(
+            'Amount',
+            style: TextStyle(fontSize: 10),
+          ),
+          const SizedBox(
+            width: 4,
+          ),
+          Text(numberFormat.format(totalAmount),
+              style: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w900)),
+          ],
       );
     }
   }

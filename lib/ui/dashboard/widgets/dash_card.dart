@@ -20,7 +20,7 @@ class DashCard extends StatelessWidget {
         child: Row(
           children: [
             const Text(
-              'Number of Cities',
+              'Cities',
               style: TextStyle(color: Colors.white),
             ),
             const SizedBox(
@@ -29,7 +29,7 @@ class DashCard extends StatelessWidget {
             Text(
               f.format(dashboardData.cities),
               style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.w900,
                   color: Colors.yellow),
             ),
@@ -37,7 +37,7 @@ class DashCard extends StatelessWidget {
               width: 12,
             ),
             const Text(
-              'Number of Events',
+              'Events',
               style: TextStyle(color: Colors.white),
             ),
             const SizedBox(
@@ -46,7 +46,7 @@ class DashCard extends StatelessWidget {
             Text(
               f.format(dashboardData.events),
               style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.w900,
                   color: Colors.yellow),
             ),
@@ -54,7 +54,7 @@ class DashCard extends StatelessWidget {
               width: 12,
             ),
             const Text(
-              'Average Rating',
+              'Avg Rating',
               style: TextStyle(color: Colors.white),
             ),
             const SizedBox(
@@ -63,7 +63,7 @@ class DashCard extends StatelessWidget {
             Text(
               dashboardData.averageRating.toStringAsFixed(2),
               style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.w900,
                   color: Colors.yellow),
             ),
@@ -71,7 +71,7 @@ class DashCard extends StatelessWidget {
               width: 12,
             ),
             const Text(
-              'Total Amount',
+              'Amount',
               style: TextStyle(color: Colors.white),
             ),
             const SizedBox(
@@ -80,7 +80,7 @@ class DashCard extends StatelessWidget {
             Text(
               f.format(dashboardData.amount),
               style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.w900,
                   color: Colors.green),
             )
