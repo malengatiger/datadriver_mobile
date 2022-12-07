@@ -41,7 +41,7 @@ class AmountByTime extends StatelessWidget {
       width: width,
       child: Card(
           elevation: elevation,
-          color: color ?? Colors.white,
+          // color: color ?? Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.0),
           ),

@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:universal_frontend/main.dart';
 import 'package:universal_frontend/services/timer_generation.dart';
 
 import '../../utils/emojis.dart';
@@ -65,10 +66,8 @@ class GenerationPageState extends State<GenerationPage>
           });
         } else {
           processTimerMessage(timerMessage);
-          setState(() {
-          });
+          setState(() {});
         }
-
       }
     });
   }
@@ -80,6 +79,8 @@ class GenerationPageState extends State<GenerationPage>
     cityHashMap[message.cityName!] = message.cityName!;
     totalGenerated += message.events;
   }
+  late TimerGeneration timerGeneration;
+
 
   void showTimerSnack({
     required TimerMessage message,
@@ -103,7 +104,7 @@ class GenerationPageState extends State<GenerationPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.brown[100],
+        // backgroundColor: Colors.brown[100],
         elevation: 1,
         title: Text(
           'Streaming Data Generation',
@@ -112,7 +113,7 @@ class GenerationPageState extends State<GenerationPage>
               fontWeight: FontWeight.normal),
         ),
       ),
-      backgroundColor: Colors.brown[100],
+      // backgroundColor: Colors.brown[100],
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -122,7 +123,7 @@ class GenerationPageState extends State<GenerationPage>
                 padding: const EdgeInsets.all(12.0),
                 child: Card(
                   elevation: 4,
-                  color: Colors.brown[50],
+                  // color: Colors.brown[50],
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(32.0),
                   ),
@@ -219,43 +220,75 @@ class GenerationPageState extends State<GenerationPage>
                               ),
                               totalGenerated == 0
                                   ? const SizedBox(
-                                height: 0,
-                              )
+                                      height: 0,
+                                    )
                                   : Row(
-                                    children: [
-                                      Text(numberFormat.format(totalGenerated), style: GoogleFonts.secularOne(
-                                          textStyle: Theme.of(context).textTheme.bodyMedium,
-                                          fontWeight: FontWeight.w900),),
-                                      const SizedBox(width: 4,),
-                                      Text(
-                                      style: GoogleFonts.lato(
-                                          textStyle: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall,
-                                          fontWeight: FontWeight.normal, color: Colors.blue[700]),
-                                          'Events generated for '),
-                                      const SizedBox(width: 4,),
-                                      Text(numberFormat.format(cityHashMap.keys.toList().length), style: GoogleFonts.secularOne(
-                                          textStyle: Theme.of(context).textTheme.bodyMedium,
-                                          fontWeight: FontWeight.w900),),
-                                      const SizedBox(width: 4,),
-                                      const Text('cities'),
-                                    ],
-                                  ),
+                                      children: [
+                                        Text(
+                                          numberFormat.format(totalGenerated),
+                                          style: GoogleFonts.secularOne(
+                                              textStyle: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium,
+                                              fontWeight: FontWeight.w900),
+                                        ),
+                                        const SizedBox(
+                                          width: 4,
+                                        ),
+                                        Text(
+                                            style: GoogleFonts.lato(
+                                              textStyle: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall,
+                                              fontWeight: FontWeight.normal,
+                                            ),
+                                            'Events generated for '),
+                                        const SizedBox(
+                                          width: 4,
+                                        ),
+                                        Text(
+                                          numberFormat.format(
+                                              cityHashMap.keys.toList().length),
+                                          style: GoogleFonts.secularOne(
+                                              textStyle: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium,
+                                              fontWeight: FontWeight.w900),
+                                        ),
+                                        const SizedBox(
+                                          width: 4,
+                                        ),
+                                        const Text('cities'),
+                                      ],
+                                    ),
                               const SizedBox(
                                 height: 28,
                               ),
-                              _isGeneration? const SizedBox(height: 16, width: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 4, backgroundColor: Colors.orange,
-                                  ),):ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    elevation: 8,
-                                  ),
-                                  onPressed: startGenerator,
-                                  child:  Text('Start Generator',style: GoogleFonts.lato(
-                                      textStyle: Theme.of(context).textTheme.bodySmall,
-                                      fontWeight: FontWeight.normal, color: Colors.white),))
+                              _isGeneration
+                                  ? const SizedBox(
+                                      height: 16,
+                                      width: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 4,
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    )
+                                  : ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                          elevation: 8,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(16.0),
+                                          )),
+                                      onPressed: startGenerator,
+                                      child: Text(
+                                        'Start Generator',
+                                        style: GoogleFonts.lato(
+                                            textStyle: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall,
+                                            fontWeight: FontWeight.normal),
+                                      ))
                             ],
                           )),
                         ),
@@ -305,15 +338,16 @@ class GenerationPageState extends State<GenerationPage>
                                 child: Text(
                                   'Stop Generator',
                                   style: GoogleFonts.lato(
-                                      textStyle:
-                                          Theme.of(context).textTheme.bodyMedium,
+                                      textStyle: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium,
                                       fontWeight: FontWeight.normal,
-                                      color: Colors.white, fontSize: 12),
+                                      color: Colors.white,
+                                      fontSize: 12),
                                 )),
                             const SizedBox(
                               width: 8,
                             ),
-
                           ],
                         ),
                       ),
@@ -329,9 +363,13 @@ class GenerationPageState extends State<GenerationPage>
   }
 
   void startGenerator() {
+    timerGeneration = getIt
+        .isReady<TimerGeneration>()
+        .then((_) => getIt<TimerGeneration>()) as TimerGeneration;
     setState(() {
       _isGeneration = true;
     });
+
     cityHashMap.clear();
     totalGenerated = 0;
 

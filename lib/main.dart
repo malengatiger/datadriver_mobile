@@ -1,19 +1,29 @@
 import 'package:device_preview/device_preview.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:universal_frontend/services/data_service.dart';
-import 'package:universal_frontend/ui/aggregates/aggregate_page.dart';
+import 'package:universal_frontend/services/timer_generation.dart';
 import 'package:universal_frontend/ui/dashboard/dashboard_main.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:universal_frontend/utils/util.dart';
 
 import 'firebase_options.dart';
+import 'package:get_it/get_it.dart';
 
 late FirebaseApp firebaseApp;
+final getIt = GetIt.instance;
+
+void setup() {
+  getIt.registerSingleton<TimerGeneration>(TimerGeneration());
+  p('${Emoji.peach} getIt registered TimerGeneration');
+// Alternatively you could write it if you don't like global variables
+//   GetIt.I.registerSingleton<AppModel>(AppModel());
+}
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   firebaseApp = await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -21,6 +31,7 @@ Future<void> main() async {
 
   await dotenv.load(fileName: ".env");
   p('$heartBlue DotEnv has been loaded');
+  setup();
 
   p('${Emoji.brocolli} Checking for current user : FirebaseAuth');
   var user = FirebaseAuth.instance.currentUser;
@@ -57,9 +68,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'DataDriver+',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: FlexThemeData.light(scheme: FlexScheme.mallardGreen),
+      // The Mandy red, dark theme.
+      darkTheme: FlexThemeData.dark(scheme: FlexScheme.mallardGreen),
+      // Use dark or light theme based on system setting.
+      themeMode: ThemeMode.system,
       // home: const AggregatePage(),
       home: const DashboardMain(),
     );

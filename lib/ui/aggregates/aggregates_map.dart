@@ -136,19 +136,19 @@ class AggregatesMapState extends State<AggregatesMap> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.brown[100],
+        backgroundColor: Theme.of(context).secondaryHeaderColor,
         title: isLoading
             ? const Text(
                 'Aggregate Map Loading ...',
                 style: TextStyle(fontSize: 12),
               )
-            : const Text(
+            :  Text(
                 'City Aggregate Map',
-                style: TextStyle(fontSize: 12, color: Colors.black),
+                style: TextStyle(fontSize: 12, color: Theme.of(context).primaryColor),
               ),
 
         bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(48),
+            preferredSize: const Size.fromHeight(88),
             child: Column(
               children: [
                 Row(
@@ -193,16 +193,16 @@ class AggregatesMapState extends State<AggregatesMap> {
                 const SizedBox(height: 4,),
 
                 const SizedBox(
-                  height: 8,
+                  height: 12,
                 ),
                 const MinutesAgoWidget(),
                 const SizedBox(
-                  height: 12,
+                  height: 20,
                 ),
               ],
             )),
       ),
-      backgroundColor: Colors.brown[100],
+      // backgroundColor: Colors.brown[100],
       body: Stack(
               children: [
                 GoogleMap(

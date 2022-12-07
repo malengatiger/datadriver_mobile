@@ -15,7 +15,6 @@ class TimerMessage {
   String? cityName;
   TimerMessage({required this.date, required this.message, required this.statusCode, this.cityName, required this.events});
 }
-TimerGeneration timerGeneration = TimerGeneration();
 class TimerGeneration {
   late Timer _timer;
   var _cities = <City>[];
