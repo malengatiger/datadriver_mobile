@@ -10,6 +10,7 @@ import 'package:universal_frontend/services/api_service.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/aggregate_table.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:universal_frontend/utils/providers.dart';
+import 'package:animations/animations.dart';
 import 'package:badges/badges.dart';
 import '../../services/timer_generation.dart';
 import '../../utils/util.dart';
@@ -27,7 +28,7 @@ class AggregatePage extends StatefulWidget {
 
 class AggregatePageState extends State<AggregatePage>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
+  late AnimationController _animationController;
   var aggregates = <CityAggregate>[];
   final apiService = ApiService();
   var isLoading = false;
@@ -37,7 +38,18 @@ class AggregatePageState extends State<AggregatePage>
 
   @override
   void initState() {
-    _controller = AnimationController(vsync: this);
+    _animationController = AnimationController(
+      value: 0.0,
+      duration: const Duration(milliseconds: 1500),
+      reverseDuration: const Duration(milliseconds: 75),
+      vsync: this,
+    )..addStatusListener((AnimationStatus status) {
+        setState(() {
+          // setState needs to be called to trigger a rebuild because
+          // the 'HIDE FAB'/'SHOW FAB' button needs to be updated based
+          // the latest value of [_controller.status].
+        });
+      });
     super.initState();
     p('.... initState inside AggregatePage $redDot');
     _getAggregates();
@@ -48,18 +60,20 @@ class AggregatePageState extends State<AggregatePage>
     setState(() {
       isLoading = true;
     });
+    _animationController.reverse();
     aggregates = await apiService.getCityAggregates(minutes: minutesAgo);
     setState(() {
       isLoading = false;
     });
+
+    _animationController.forward();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _animationController.dispose();
     super.dispose();
   }
-
 
   void navigateToCityMap({required CityAggregate agg}) {
     p('$appleGreen $appleGreen Navigating to city map:  ${agg.cityName} ...');
@@ -130,9 +144,10 @@ class AggregatePageState extends State<AggregatePage>
           : AppBar(
               elevation: 0,
               backgroundColor: Theme.of(context).secondaryHeaderColor,
-              title:  Text(
+              title: Text(
                 'Aggregates',
-                style: TextStyle(fontSize: 14, color: Theme.of(context).primaryColor),
+                style: TextStyle(
+                    fontSize: 14, color: Theme.of(context).primaryColor),
               ),
               bottom: PreferredSize(
                   preferredSize: aggregates.isEmpty
@@ -142,83 +157,91 @@ class AggregatePageState extends State<AggregatePage>
                     children: [
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                        child: Card(
-                          elevation: 4,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16.0),
-                          ),
-                          // color: Colors.brown[50],
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    const SizedBox(
-                                        width: 100,
-                                        child: Text(
-                                          'Total Cities:',
-                                          style: TextStyle(fontSize: 12),
-                                        )),
-                                    const SizedBox(
-                                      width: 12,
-                                    ),
-                                    Text(
-                                      '${aggregates.length}',
-                                      style: const TextStyle(
+                        child: AnimatedBuilder(animation: _animationController,
+                            builder: (BuildContext context, Widget? child) {
+                              return FadeScaleTransition(
+                                animation: _animationController,
+                                child: child,
+                              );
+                            },
+                          child: Card(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.0),
+                            ),
+                            // color: Colors.brown[50],
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      const SizedBox(
+                                          width: 100,
+                                          child: Text(
+                                            'Total Cities:',
+                                            style: TextStyle(fontSize: 12),
+                                          )),
+                                      const SizedBox(
+                                        width: 12,
+                                      ),
+                                      Text(
+                                        '${aggregates.length}',
+                                        style: const TextStyle(
                                           // color: Colors.indigo,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(
-                                  height: 4,
-                                ),
-                                Row(
-                                  children: [
-                                    const SizedBox(
-                                        width: 100,
-                                        child: Text(
-                                          'Total Amount:',
-                                          style: TextStyle(fontSize: 12),
-                                        )),
-                                    const SizedBox(
-                                      width: 12,
-                                    ),
-                                    Text(
-                                      amt,
-                                      style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(
+                                    height: 4,
+                                  ),
+                                  Row(
+                                    children: [
+                                      const SizedBox(
+                                          width: 100,
+                                          child: Text(
+                                            'Total Amount:',
+                                            style: TextStyle(fontSize: 12),
+                                          )),
+                                      const SizedBox(
+                                        width: 12,
+                                      ),
+                                      Text(
+                                        amt,
+                                        style: const TextStyle(
                                           // color: Colors.teal,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w900),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(
-                                  height: 4,
-                                ),
-                                Row(
-                                  children: [
-                                    const SizedBox(
-                                        width: 100,
-                                        child: Text(
-                                          'Total Events:',
-                                          style: TextStyle(fontSize: 12),
-                                        )),
-                                    const SizedBox(
-                                      width: 12,
-                                    ),
-                                    Text(
-                                      formattedEvents,
-                                      style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w900),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(
+                                    height: 4,
+                                  ),
+                                  Row(
+                                    children: [
+                                      const SizedBox(
+                                          width: 100,
+                                          child: Text(
+                                            'Total Events:',
+                                            style: TextStyle(fontSize: 12),
+                                          )),
+                                      const SizedBox(
+                                        width: 12,
+                                      ),
+                                      Text(
+                                        formattedEvents,
+                                        style: const TextStyle(
                                           // color: Colors.black,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -361,158 +384,181 @@ class AggregatePageState extends State<AggregatePage>
                                             }
                                           },
                                         )
-                                      : Padding(
-                                          padding: const EdgeInsets.only(
-                                              bottom: 2.0),
-                                          child: Badge(
-                                            elevation: 8,
-
-                                            toAnimate: true,
-                                            badgeContent: Text('${aggregates.length}', style: const TextStyle(color: Colors.white),),
-                                            child: ListView.builder(
-                                                itemCount: aggregates.length,
-                                                itemBuilder: (context, index) {
-                                                  var agg =
-                                                      aggregates.elementAt(index);
-                                                  var fm = NumberFormat.compact();
-                                                  return Padding(
-                                                    padding: const EdgeInsets
-                                                            .symmetric(
-                                                        horizontal: 4),
-                                                    child: PopupMenuButton(
-                                                      elevation: 8,
-                                                      // color: Colors.brown[50],
-                                                      onSelected: (value) {
-                                                        p('$redDot PopupMenuButton: onSelected: $value');
-                                                      },
-                                                      itemBuilder: (context) {
-                                                        return [
-                                                          PopupMenuItem(
-                                                            value: 'goToMap',
-                                                            onTap: () {
-                                                              p('$redDot PopupMenuItem: city menu item tapped, goToMap: ${agg.cityName}');
-                                                              navigateToCityMap( agg: agg);
-                                                            },
-                                                            child: ListTile(
-                                                              title: Text(
-                                                                'Go to Map',
-                                                                style: thinStyle,
-                                                              ),
-                                                              leading: const Icon(
-                                                                  Icons
-                                                                      .location_on),
-                                                            ),
-                                                          ),
-                                                          PopupMenuItem(
-                                                            value: 'sortByAmount',
-                                                            onTap: () {
-                                                              p('$redDot PopupMenuItem: Sort By Amount tapped');
-                                                              _sortByAmount();
-                                                            },
-                                                            child: ListTile(
-                                                              leading: const Icon(
-                                                                  Icons
-                                                                      .sort_by_alpha),
-                                                              title: Text(
-                                                                'Sort By Amount',
-                                                                style: thinStyle,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          PopupMenuItem(
-                                                            value: 'sortByName',
-                                                            onTap: () {
-                                                              p('$redDot PopupMenuItem: Sort By Name tapped');
-                                                              _sortByName();
-                                                            },
-                                                            child: ListTile(
-                                                              leading: const Icon(
-                                                                  Icons
-                                                                      .sort_by_alpha),
-                                                              title: Text(
-                                                                'Sort By Name',
-                                                                style: thinStyle,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                          PopupMenuItem(
-                                                            value: 'sortByRating',
-                                                            onTap: () {
-                                                              p('$redDot PopupMenuItem: Sort By Rating tapped');
-                                                              _sortByRating();
-                                                            },
-                                                            child: ListTile(
-                                                              leading: const Icon(
-                                                                  Icons
-                                                                      .sort_by_alpha),
-                                                              title: Text(
-                                                                'Sort By Rating',
-                                                                style: thinStyle,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ];
-                                                      },
-                                                      child: Card(
-                                                        elevation: 1,
-                                                        shape:
-                                                            RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(8.0),
-                                                        ),
-                                                        child: Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .all(8.0),
-                                                          child: Row(
-                                                            children: [
-                                                              SizedBox(
-                                                                  width: 40,
-                                                                  child: Text(
-                                                                      agg.averageRating
-                                                                          .toStringAsFixed(
-                                                                              1),
-                                                                      style: const TextStyle(
-                                                                          fontWeight:
-                                                                              FontWeight
-                                                                                  .bold,
-                                                                          color: Colors
-                                                                              .blue))),
-                                                              // SizedBox(
-                                                              //     width: 60,
-                                                              //     child: Text(
-                                                              //         f.format(agg.numberOfEvents),
-                                                              //         style: const TextStyle(
-                                                              //             fontWeight: FontWeight
-                                                              //                 .bold))),
-                                                              SizedBox(
-                                                                  width: 80,
-                                                                  child: Text(
-                                                                      fm.format(agg
-                                                                          .totalSpent),
-                                                                      style: const TextStyle(
-                                                                          fontWeight:
-                                                                              FontWeight.w900))),
-                                                              Flexible(
-                                                                child: Text(
-                                                                  agg.cityName,
+                                      : AnimatedBuilder(
+                                          animation: _animationController,
+                                          builder: (BuildContext context,
+                                              Widget? child) {
+                                            return FadeScaleTransition(
+                                              animation: _animationController,
+                                              child: child,
+                                            );
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                                bottom: 2.0),
+                                            child: Badge(
+                                              elevation: 8,
+                                              toAnimate: true,
+                                              badgeContent: Text(
+                                                '${aggregates.length}',
+                                                style: const TextStyle(
+                                                    color: Colors.white),
+                                              ),
+                                              child: ListView.builder(
+                                                  itemCount: aggregates.length,
+                                                  itemBuilder:
+                                                      (context, index) {
+                                                    var agg = aggregates
+                                                        .elementAt(index);
+                                                    var fm =
+                                                        NumberFormat.compact();
+                                                    return Padding(
+                                                      padding: const EdgeInsets
+                                                              .symmetric(
+                                                          horizontal: 4),
+                                                      child: PopupMenuButton(
+                                                        elevation: 8,
+                                                        // color: Colors.brown[50],
+                                                        onSelected: (value) {
+                                                          p('$redDot PopupMenuButton: onSelected: $value');
+                                                        },
+                                                        itemBuilder: (context) {
+                                                          return [
+                                                            PopupMenuItem(
+                                                              value: 'goToMap',
+                                                              onTap: () {
+                                                                p('$redDot PopupMenuItem: city menu item tapped, goToMap: ${agg.cityName}');
+                                                                navigateToCityMap(
+                                                                    agg: agg);
+                                                              },
+                                                              child: ListTile(
+                                                                title: Text(
+                                                                  'Go to Map',
                                                                   style:
-                                                                      const TextStyle(
-                                                                    fontSize: 12,
-                                                                  ),
+                                                                      thinStyle,
+                                                                ),
+                                                                leading: const Icon(
+                                                                    Icons
+                                                                        .location_on),
+                                                              ),
+                                                            ),
+                                                            PopupMenuItem(
+                                                              value:
+                                                                  'sortByAmount',
+                                                              onTap: () {
+                                                                p('$redDot PopupMenuItem: Sort By Amount tapped');
+                                                                _sortByAmount();
+                                                              },
+                                                              child: ListTile(
+                                                                leading: const Icon(
+                                                                    Icons
+                                                                        .sort_by_alpha),
+                                                                title: Text(
+                                                                  'Sort By Amount',
+                                                                  style:
+                                                                      thinStyle,
                                                                 ),
                                                               ),
-                                                              const SizedBox(
-                                                                width: 8,
+                                                            ),
+                                                            PopupMenuItem(
+                                                              value:
+                                                                  'sortByName',
+                                                              onTap: () {
+                                                                p('$redDot PopupMenuItem: Sort By Name tapped');
+                                                                _sortByName();
+                                                              },
+                                                              child: ListTile(
+                                                                leading: const Icon(
+                                                                    Icons
+                                                                        .sort_by_alpha),
+                                                                title: Text(
+                                                                  'Sort By Name',
+                                                                  style:
+                                                                      thinStyle,
+                                                                ),
                                                               ),
-                                                            ],
+                                                            ),
+                                                            PopupMenuItem(
+                                                              value:
+                                                                  'sortByRating',
+                                                              onTap: () {
+                                                                p('$redDot PopupMenuItem: Sort By Rating tapped');
+                                                                _sortByRating();
+                                                              },
+                                                              child: ListTile(
+                                                                leading: const Icon(
+                                                                    Icons
+                                                                        .sort_by_alpha),
+                                                                title: Text(
+                                                                  'Sort By Rating',
+                                                                  style:
+                                                                      thinStyle,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ];
+                                                        },
+                                                        child: Card(
+                                                          elevation: 1,
+                                                          shape:
+                                                              RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        8.0),
+                                                          ),
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .all(8.0),
+                                                            child: Row(
+                                                              children: [
+                                                                SizedBox(
+                                                                    width: 40,
+                                                                    child: Text(
+                                                                        agg.averageRating
+                                                                            .toStringAsFixed(
+                                                                                1),
+                                                                        style: const TextStyle(
+                                                                            fontWeight:
+                                                                                FontWeight.bold,
+                                                                            color: Colors.blue))),
+                                                                // SizedBox(
+                                                                //     width: 60,
+                                                                //     child: Text(
+                                                                //         f.format(agg.numberOfEvents),
+                                                                //         style: const TextStyle(
+                                                                //             fontWeight: FontWeight
+                                                                //                 .bold))),
+                                                                SizedBox(
+                                                                    width: 80,
+                                                                    child: Text(
+                                                                        fm.format(agg
+                                                                            .totalSpent),
+                                                                        style: const TextStyle(
+                                                                            fontWeight:
+                                                                                FontWeight.w900))),
+                                                                Flexible(
+                                                                  child: Text(
+                                                                    agg.cityName,
+                                                                    style:
+                                                                        const TextStyle(
+                                                                      fontSize:
+                                                                          12,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(
+                                                                  width: 8,
+                                                                ),
+                                                              ],
+                                                            ),
                                                           ),
                                                         ),
                                                       ),
-                                                    ),
-                                                  );
-                                                }),
+                                                    );
+                                                  }),
+                                            ),
                                           ),
                                         ),
                                 ),
@@ -564,7 +610,9 @@ class AggregatePageState extends State<AggregatePage>
             type: PageTransitionType.scale,
             alignment: Alignment.bottomCenter,
             duration: const Duration(milliseconds: 1000),
-            child:  AggregatesMap(aggregates: aggregates,)));
+            child: AggregatesMap(
+              aggregates: aggregates,
+            )));
   }
 
   void navigateToCityList() {}

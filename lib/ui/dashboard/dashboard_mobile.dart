@@ -211,9 +211,7 @@ class DashboardMobileState extends State<DashboardMobile> {
                 ),
         ],
       ),
-      bottomNavigationBar: dashData?.events == 0
-          ? const SizedBox()
-          : BottomNavigationBar(
+      bottomNavigationBar: BottomNavigationBar(
               elevation: 8,
               currentIndex: 0,
               onTap: (value) {

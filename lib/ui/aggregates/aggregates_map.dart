@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
 
+import 'package:animations/animations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,7 +23,10 @@ import '../../utils/util.dart';
 import '../dashboard/widgets/minutes_ago_widget.dart';
 
 class AggregatesMap extends StatefulWidget {
-  const AggregatesMap({super.key, required this.aggregates, });
+  const AggregatesMap({
+    super.key,
+    required this.aggregates,
+  });
 
   final List<CityAggregate> aggregates;
 
@@ -30,9 +34,11 @@ class AggregatesMap extends StatefulWidget {
   State<AggregatesMap> createState() => AggregatesMapState();
 }
 
-class AggregatesMapState extends State<AggregatesMap> {
+class AggregatesMapState extends State<AggregatesMap>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
   // final Completer<GoogleMapController> _mapController = Completer();
-   GoogleMapController? googleMapController;
+  GoogleMapController? googleMapController;
 
   static const CameraPosition _inTheAtlanticOcean = CameraPosition(
     target: LatLng(0.0, 0.0),
@@ -43,8 +49,19 @@ class AggregatesMapState extends State<AggregatesMap> {
 
   @override
   void initState() {
+    _animationController = AnimationController(
+        value: 0.0,
+        duration: const Duration(milliseconds: 2000),
+        reverseDuration: const Duration(milliseconds: 500),
+        vsync: this);
     super.initState();
     _calculate();
+  }
+  @override
+  void dispose() {
+    _animationController.stop(canceled: true);
+    super.dispose();
+
   }
 
   var totalCityAmount = 0.0;
@@ -59,11 +76,8 @@ class AggregatesMapState extends State<AggregatesMap> {
       totalEvents += agg.numberOfEvents;
     }
     averageCityRating = totalCityRating / widget.aggregates.length;
-    setState(() {
-
-    });
+    setState(() {});
   }
-
 
   Future<void> _putAggregateMarkersOnMap() async {
     if (googleMapController == null) {
@@ -88,12 +102,14 @@ class AggregatesMapState extends State<AggregatesMap> {
       );
       _markers.add(marker);
     }
-    var latLng =
-        LatLng(widget.aggregates.first.latitude, widget.aggregates.first.longitude);
+    var latLng = LatLng(
+        widget.aggregates.first.latitude, widget.aggregates.first.longitude);
     googleMapController!.animateCamera(CameraUpdate.newLatLngZoom(latLng, 6));
     p('$diamond $diamond AggregatesMap: ... finished putting agg markers on map');
     setState(() {});
+    _animationController.forward();
   }
+
   bool _showCityAggregate = false;
   CityAggregate? aggregate;
 
@@ -102,12 +118,14 @@ class AggregatesMapState extends State<AggregatesMap> {
     setState(() {
       _showCityAggregate = true;
     });
+    _animationController.forward();
   }
 
   _closeCityAggregateCard() {
     setState(() {
       _showCityAggregate = false;
     });
+    _animationController.reverse();
   }
 
   Future<Uint8List> getImage(String path, int width) async {
@@ -142,85 +160,119 @@ class AggregatesMapState extends State<AggregatesMap> {
                 'Aggregate Map Loading ...',
                 style: TextStyle(fontSize: 12),
               )
-            :  Text(
+            : Text(
                 'City Aggregate Map',
-                style: TextStyle(fontSize: 12, color: Theme.of(context).primaryColor),
+                style: TextStyle(
+                    fontSize: 12, color: Theme.of(context).primaryColor),
               ),
-
         bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(88),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'Events',
-                      style: TextStyle(fontSize: 10),
-                    ),
-                    const SizedBox(
-                      width: 4,
-                    ),
-                    Text(numberFormat.format(totalEvents),
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(
-                      width: 16,
-                    ),
-                    const Text(
-                      'Rating',
-                      style: TextStyle(fontSize: 10),
-                    ),
-                    const SizedBox(
-                      width: 4,
-                    ),
-                    Text(averageCityRating.toStringAsFixed(2),
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(
-                      width: 16,
-                    ),
-                    const Text(
-                      'Amount',
-                      style: TextStyle(fontSize: 10),
-                    ),
-                    const SizedBox(
-                      width: 4,
-                    ),
-                    Text(numberFormat.format(totalCityAmount),
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w900))
-                  ],
-                ),
-                const SizedBox(height: 4,),
+            preferredSize: const Size.fromHeight(120),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Column(
+                children: [
+                  AnimatedBuilder(animation: _animationController,
+                      builder: (context, child){
+                        return FadeScaleTransition(
+                            animation: _animationController,
+                            child: child);
 
-                const SizedBox(
-                  height: 12,
-                ),
-                const MinutesAgoWidget(),
-                const SizedBox(
-                  height: 20,
-                ),
-              ],
-            )),
+                      },
+                    child: Card(
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16.0)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'Events',
+                                  style: TextStyle(fontSize: 10),
+                                ),
+                                const SizedBox(
+                                  width: 4,
+                                ),
+                                Text(numberFormat.format(totalEvents),
+                                    style:
+                                    const TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(
+                                  width: 16,
+                                ),
+                                const Text(
+                                  'Rating',
+                                  style: TextStyle(fontSize: 10),
+                                ),
+                                const SizedBox(
+                                  width: 4,
+                                ),
+                                Text(averageCityRating.toStringAsFixed(2),
+                                    style:
+                                    const TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(
+                                  width: 16,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 12,
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'Amount',
+                                  style: TextStyle(fontSize: 10),
+                                ),
+                                const SizedBox(
+                                  width: 4,
+                                ),
+                                Text(numberFormat.format(totalCityAmount),
+                                    style: const TextStyle(
+                                        fontSize: 16, fontWeight: FontWeight.w900))
+                              ],
+                            ),
+                            const SizedBox(
+                              height: 24,
+                            ),
+                            const MinutesAgoWidget(),
+                            const SizedBox(
+                              height: 12,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8,)
+                ],
+              )
+            ),
+        ),
       ),
       // backgroundColor: Colors.brown[100],
       body: Stack(
-              children: [
-                GoogleMap(
-                  mapType: MapType.hybrid,
-                  initialCameraPosition: _inTheAtlanticOcean,
-                  markers: Set<Marker>.of(_markers),
-                  buildingsEnabled: true,
-                  compassEnabled: true,
-                  trafficEnabled: true,
-                  mapToolbarEnabled: true,
-                  myLocationEnabled: true,
-                  onMapCreated: (GoogleMapController controller) {
-                    p('$brocolli $brocolli onMapCreated: map is created and ready for markers!');
-                    googleMapController = controller;
-                    _putAggregateMarkersOnMap();
-                  },
-                ),
-                isLoading? Center(
+        children: [
+          GoogleMap(
+            mapType: MapType.hybrid,
+            initialCameraPosition: _inTheAtlanticOcean,
+            markers: Set<Marker>.of(_markers),
+            buildingsEnabled: true,
+            compassEnabled: true,
+            trafficEnabled: true,
+            mapToolbarEnabled: true,
+            myLocationEnabled: true,
+            onMapCreated: (GoogleMapController controller) {
+              p('$brocolli $brocolli onMapCreated: map is created and ready for markers!');
+              googleMapController = controller;
+              _putAggregateMarkersOnMap();
+            },
+          ),
+          isLoading
+              ? Center(
                   child: SizedBox(
                     width: 240,
                     height: 240,
@@ -251,30 +303,49 @@ class AggregatesMapState extends State<AggregatesMap> {
                       ),
                     ),
                   ),
-                ): const SizedBox(height: 0,),
-                _showCityAggregate
-                    ? aggregate == null? const SizedBox(height: 0,):Positioned(
-                        right: 8,
-                        top: 8,
+                )
+              : const SizedBox(
+                  height: 0,
+                ),
+          _showCityAggregate
+              ? aggregate == null
+                  ? const SizedBox(
+                      height: 0,
+                    )
+                  : Positioned(
+                      right: 8,
+                      top: 8,
+                      child: AnimatedBuilder(
+                        animation: _animationController,
+                        builder: (context, child) {
+                          return FadeScaleTransition(
+                            animation: _animationController,
+                            child: child,
+                          );
+                        },
                         child: CityAggregateCard(
-                            backgroundColor: Colors.black26,
-                            cityAggregate: aggregate!,
-                            onClose: () {
-                              _closeCityAggregateCard();
-                            }))
-                    : const SizedBox(
-                        height: 0,
-                      ),
-
-              ],
-            ),
+                          backgroundColor: Colors.black26,
+                          cityAggregate: aggregate!,
+                          onClose: () {
+                            _closeCityAggregateCard();
+                          },
+                        ),
+                      ))
+              : const SizedBox(
+                  height: 0,
+                ),
+        ],
+      ),
     );
   }
 }
 
 class CityAggregateCard extends StatelessWidget {
-  const CityAggregateCard({Key? key, required this.cityAggregate,
-    required this.onClose, this.backgroundColor})
+  const CityAggregateCard(
+      {Key? key,
+      required this.cityAggregate,
+      required this.onClose,
+      this.backgroundColor})
       : super(key: key);
   final CityAggregate cityAggregate;
   final Function onClose;
@@ -307,32 +378,41 @@ class CityAggregateCard extends StatelessWidget {
                       onPressed: () {
                         onClose();
                       },
-                      icon: const Icon(Icons.close, color: Colors.yellow,)),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.yellow,
+                      )),
                   const SizedBox(width: 0),
                 ],
               ),
               Text(
                 cityAggregate.cityName,
                 style: GoogleFonts.secularOne(
-              textStyle: Theme.of(context).textTheme.headline6,
-            fontWeight: FontWeight.w900, color: Colors.white),
+                    textStyle: Theme.of(context).textTheme.headline6,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white),
               ),
               const SizedBox(
                 height: 16,
               ),
               Row(
                 children: [
-                   SizedBox(width: 120, child: Text('Total Spent:',
-                    style: GoogleFonts.lato(
-                        textStyle: Theme.of(context).textTheme.bodySmall,
-                        fontWeight: FontWeight.normal, color: Colors.white),
-                  ),
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      'Total Spent:',
+                      style: GoogleFonts.lato(
+                          textStyle: Theme.of(context).textTheme.bodySmall,
+                          fontWeight: FontWeight.normal,
+                          color: Colors.white),
+                    ),
                   ),
                   Text(
                     numberFormat.format(cityAggregate.totalSpent),
                     style: GoogleFonts.secularOne(
-                    textStyle: Theme.of(context).textTheme.bodyMedium,
-                    fontWeight: FontWeight.w900, color: Colors.white),
+                        textStyle: Theme.of(context).textTheme.bodyMedium,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white),
                   ),
                 ],
               ),
@@ -341,17 +421,22 @@ class CityAggregateCard extends StatelessWidget {
               ),
               Row(
                 children: [
-                   SizedBox(width: 120, child: Text('Total Events:',
-                    style: GoogleFonts.lato(
-                        textStyle: Theme.of(context).textTheme.bodySmall,
-                        fontWeight: FontWeight.normal, color: Colors.white),
-                  ),
+                  SizedBox(
+                    width: 120,
+                    child: Text(
+                      'Total Events:',
+                      style: GoogleFonts.lato(
+                          textStyle: Theme.of(context).textTheme.bodySmall,
+                          fontWeight: FontWeight.normal,
+                          color: Colors.white),
+                    ),
                   ),
                   Text(
                     numberFormat.format(cityAggregate.numberOfEvents),
                     style: GoogleFonts.secularOne(
                         textStyle: Theme.of(context).textTheme.bodyMedium,
-                        fontWeight: FontWeight.w900, color: Colors.white),
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white),
                   ),
                 ],
               ),
@@ -360,23 +445,27 @@ class CityAggregateCard extends StatelessWidget {
               ),
               Row(
                 children: [
-                   SizedBox(width: 120, child: Text('Average Rating:',
-                style: GoogleFonts.lato(
-                    textStyle: Theme.of(context).textTheme.bodySmall,
-                    fontWeight: FontWeight.normal, color: Colors.white),
-                  )),
+                  SizedBox(
+                      width: 120,
+                      child: Text(
+                        'Average Rating:',
+                        style: GoogleFonts.lato(
+                            textStyle: Theme.of(context).textTheme.bodySmall,
+                            fontWeight: FontWeight.normal,
+                            color: Colors.white),
+                      )),
                   Text(
                     cityAggregate.averageRating.toStringAsFixed(2),
                     style: GoogleFonts.secularOne(
                         textStyle: Theme.of(context).textTheme.bodyMedium,
-                        fontWeight: FontWeight.w900, color: Colors.white),
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white),
                   ),
                 ],
               ),
               const SizedBox(
                 height: 24,
               ),
-
             ],
           ),
         ),
@@ -384,5 +473,3 @@ class CityAggregateCard extends StatelessWidget {
     );
   }
 }
-
-

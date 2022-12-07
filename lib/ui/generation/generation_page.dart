@@ -1,9 +1,14 @@
 import 'dart:collection';
+import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:universal_frontend/data_models/generation_message.dart';
 import 'package:universal_frontend/main.dart';
+import 'package:universal_frontend/services/api_service.dart';
 import 'package:universal_frontend/services/timer_generation.dart';
 
 import '../../utils/emojis.dart';
@@ -25,7 +30,6 @@ class GenerationPageState extends State<GenerationPage>
   void initState() {
     _controller = AnimationController(vsync: this);
     super.initState();
-    _listen();
   }
 
   @override
@@ -50,37 +54,25 @@ class GenerationPageState extends State<GenerationPage>
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
-  void _listen() {
-    p('$diamond $diamond $diamond $diamond listening to stream from timerGeneration');
-    timerGeneration.stream.listen((timerMessage) {
-      p('$diamond $diamond $diamond $diamond GenerationPage listening: '
-          '\n$appleRed TimerGeneration message arrived, statusCode: ${timerMessage.statusCode} '
-          'msg: ${timerMessage.message} $appleRed city: ${timerMessage.cityName}');
-
-      if (mounted) {
-        if (timerMessage.statusCode == FINISHED) {
-          p('$diamond $diamond $diamond $diamond GenerationPage completed! ${Emoji.leaf}');
-          _showSnack(message: 'Generation completed!');
-          setState(() {
-            _isGeneration = false;
-          });
-        } else {
-          processTimerMessage(timerMessage);
-          setState(() {});
-        }
-      }
-    });
-  }
-
   var cityHashMap = HashMap<String, String>();
   var totalGenerated = 0;
 
   void processTimerMessage(TimerMessage message) {
+    if (message.statusCode == FINISHED) {
+      p('data generation is done!');
+      setState(() {
+        _isGeneration = false;
+      });
+      return;
+    }
     cityHashMap[message.cityName!] = message.cityName!;
     totalGenerated += message.events;
-  }
-  late TimerGeneration timerGeneration;
+    setState(() {
 
+    });
+  }
+
+  late TimerGeneration timerGeneration;
 
   void showTimerSnack({
     required TimerMessage message,
@@ -104,16 +96,17 @@ class GenerationPageState extends State<GenerationPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // backgroundColor: Colors.brown[100],
+        backgroundColor: Theme.of(context).secondaryHeaderColor,
         elevation: 1,
         title: Text(
           'Streaming Data Generation',
-          style: GoogleFonts.secularOne(
+          style: GoogleFonts.lato(
               textStyle: Theme.of(context).textTheme.bodySmall,
-              fontWeight: FontWeight.normal),
+              fontWeight: FontWeight.normal,
+              color: Theme.of(context).primaryColor),
         ),
       ),
-      // backgroundColor: Colors.brown[100],
+      backgroundColor: Theme.of(context).secondaryHeaderColor,
       body: Stack(
         children: [
           SingleChildScrollView(
@@ -136,15 +129,18 @@ class GenerationPageState extends State<GenerationPage>
                           child: Form(
                               child: Column(
                             children: [
+                              const SizedBox(
+                                height: 8,
+                              ),
                               Text(
                                 'Generation Config',
-                                style: GoogleFonts.secularOne(
+                                style: GoogleFonts.lato(
                                     textStyle:
-                                        Theme.of(context).textTheme.bodyMedium,
+                                        Theme.of(context).textTheme.bodyLarge,
                                     fontWeight: FontWeight.w900),
                               ),
                               const SizedBox(
-                                height: 24,
+                                height: 32,
                               ),
                               TextFormField(
                                 controller: _intervalController,
@@ -242,7 +238,7 @@ class GenerationPageState extends State<GenerationPage>
                                                   .bodySmall,
                                               fontWeight: FontWeight.normal,
                                             ),
-                                            'Events generated for '),
+                                            'Events for '),
                                         const SizedBox(
                                           width: 4,
                                         ),
@@ -287,7 +283,8 @@ class GenerationPageState extends State<GenerationPage>
                                             textStyle: Theme.of(context)
                                                 .textTheme
                                                 .bodySmall,
-                                            fontWeight: FontWeight.normal),
+                                            fontWeight: FontWeight.normal,
+                                            color: Colors.white),
                                       ))
                             ],
                           )),
@@ -362,27 +359,97 @@ class GenerationPageState extends State<GenerationPage>
     );
   }
 
-  void startGenerator() {
-    timerGeneration = getIt
-        .isReady<TimerGeneration>()
-        .then((_) => getIt<TimerGeneration>()) as TimerGeneration;
+  Future<void> startGenerator() async {
+    p('${Emoji.pear}${Emoji.pear} startGenerator: spawn isolate ...');
+    setState(() {
+      totalGenerated = 0;
+      cityHashMap.clear();
+    });
+
+    var status = dotenv.env['CURRENT_STATUS'];
+    late String url = '';
+    if (status == 'dev') {
+      url = dotenv.env['DEV_URL']!;
+    } else {
+      url = dotenv.env['PROD_URL']!;
+    }
+    var params = GenerationParameters(
+        url: url,
+        intervalInSeconds: int.parse(_intervalController.value.text),
+        upperCount: int.parse(_upperCountController.value.text),
+        maxTimerTicks: int.parse(_maxController.value.text));
+
+    createIsolate(params: params);
     setState(() {
       _isGeneration = true;
     });
-
-    cityHashMap.clear();
-    totalGenerated = 0;
-
-    timerGeneration.start(
-        intervalInSeconds: int.parse(_intervalController.value.text),
-        upperCount: int.parse(_upperCountController.value.text),
-        max: int.parse(_maxController.value.text));
   }
 
+  Future<void> createIsolate({required GenerationParameters params}) async {
+    try {
+      var rp = ReceivePort();
+      var errorRp = ReceivePort();
+      params.sendPort = rp.sendPort;
+
+      var isolate = await Isolate.spawn<GenerationParameters>(
+          heavyTask, params, paused: true);
+      isolate.addErrorListener(rp.sendPort);
+      isolate.resume(isolate.pauseCapability!);
+      isolate.addOnExitListener(rp.sendPort);
+
+      errorRp.listen((e) {
+        p('${Emoji.redDot} exception occurred: $e');
+      });
+      rp.listen((message) {
+        p('${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}'
+            ' isolate msg: $message');
+        if (message != null) {
+          var msg = TimerMessage.fromJson(message);
+          processTimerMessage(msg);
+          if (msg.statusCode == FINISHED) {
+            isolate.kill();
+            p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji
+                .redDot} isolate has been killed!');
+          }
+        }
+      });
+    } catch (e) {
+      p('${Emoji.redDot} we have a problem ${Emoji.redDot} ${Emoji.redDot}');
+    }
+
+    // Isolate.spawn<GenerationParameters>(heavyTask, params).then((isolate) {
+    //   p('${Emoji.appleGreen }Isolate is known as: ${isolate.debugName}');
+    //   isolate.addOnExitListener(responsePort)
+    // }).catchError((err) {
+    //   p('${Emoji.redDot} We have an error : $err');
+    // }).whenComplete(() {
+    //   p('${Emoji.leaf}${Emoji.leaf} Isolate is complete. Tell someone');
+    // });
+  }
   void stopGenerator() {
     timerGeneration.stop();
     setState(() {
       _isGeneration = false;
     });
   }
+}
+
+class GenerationParameters {
+  GenerationParameters(
+      {required this.intervalInSeconds,
+      required this.upperCount,
+      required this.maxTimerTicks, required this.url, this.sendPort});
+
+  final int intervalInSeconds;
+  final int upperCount;
+  final int maxTimerTicks;
+  final String url;
+  SendPort? sendPort;
+}
+
+
+
+Future<void> heavyTask(GenerationParameters model) async {
+  TimerGeneration gen = TimerGeneration();
+  gen.start(params: model);
 }
