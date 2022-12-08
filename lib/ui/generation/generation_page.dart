@@ -1,16 +1,14 @@
 import 'dart:collection';
 import 'dart:isolate';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:universal_frontend/data_models/generation_message.dart';
-import 'package:universal_frontend/main.dart';
-import 'package:universal_frontend/services/api_service.dart';
+import 'package:stream_channel/isolate_channel.dart';
 import 'package:universal_frontend/services/timer_generation.dart';
 
+import '../../services/generation_monitor.dart';
 import '../../utils/emojis.dart';
 import '../../utils/util.dart';
 
@@ -35,12 +33,11 @@ class GenerationPageState extends State<GenerationPage>
   @override
   void dispose() {
     _controller.dispose();
-    timerGeneration.stop();
     super.dispose();
   }
 
   final _intervalController = TextEditingController(text: '10');
-  final _maxController = TextEditingController(text: '10');
+  final _maxController = TextEditingController(text: '3');
   final _upperCountController = TextEditingController(text: '100');
   bool _isGeneration = false;
 
@@ -60,16 +57,22 @@ class GenerationPageState extends State<GenerationPage>
   void processTimerMessage(TimerMessage message) {
     if (message.statusCode == FINISHED) {
       p('data generation is done!');
-      setState(() {
-        _isGeneration = false;
-      });
+      try {
+        setState(() {
+          _isGeneration = false;
+        });
+      } catch (e) {
+        p('${Emoji.redDot} Ignored last setState error ${Emoji.redDot}${Emoji.redDot}');
+      }
       return;
     }
     cityHashMap[message.cityName!] = message.cityName!;
     totalGenerated += message.events;
-    setState(() {
-
-    });
+    try {
+      setState(() {});
+    } catch (e) {
+      p('${Emoji.redDot} Ignored setState error ${Emoji.redDot}${Emoji.redDot}');
+    }
   }
 
   late TimerGeneration timerGeneration;
@@ -331,7 +334,7 @@ class GenerationPageState extends State<GenerationPage>
                                   backgroundColor: Colors.pink,
                                   elevation: 2,
                                 ),
-                                onPressed: stopGenerator,
+                                onPressed: _sendStopMessageToIsolate,
                                 child: Text(
                                   'Stop Generator',
                                   style: GoogleFonts.lato(
@@ -385,34 +388,77 @@ class GenerationPageState extends State<GenerationPage>
     });
   }
 
+  void _sendStopMessageToIsolate() {
+    p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} ....... ending STOP message to isolate');
+    //isolate.controlPort.send('stop');
+    receivePort.sendPort.send('stop');
+    setState(() {
+      _isGeneration = false;
+    });
+  }
+
+  late Isolate isolate;
+  late ReceivePort receivePort = ReceivePort();
+
   Future<void> createIsolate({required GenerationParameters params}) async {
     try {
-      var rp = ReceivePort();
-      var errorRp = ReceivePort();
-      params.sendPort = rp.sendPort;
+      receivePort = ReceivePort();
+      var errorReceivePort = ReceivePort();
+      //pass sendPort to the params so isolate can send messages
+      params.sendPort = receivePort.sendPort;
+      IsolateChannel channel = IsolateChannel(receivePort, receivePort.sendPort);
+      channel.stream.listen((data) {
+        p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received msg: $data');
+        if (data != null) {
+          if (data is String) {
+            if (data == 'stop') {
+              isolate.kill();
+              p('${Emoji.blueDot} ${Emoji.blueDot} ${Emoji.blueDot} '
+                  'isolate killed after channel received STOP message '
+                  '{Emoji.blueDot} ${Emoji.blueDot} ${Emoji.blueDot} ${Emoji.redDot}');
+              sendFinishedMessage();
+            }
 
-      var isolate = await Isolate.spawn<GenerationParameters>(
-          heavyTask, params, paused: true);
-      isolate.addErrorListener(rp.sendPort);
-      isolate.resume(isolate.pauseCapability!);
-      isolate.addOnExitListener(rp.sendPort);
-
-      errorRp.listen((e) {
-        p('${Emoji.redDot} exception occurred: $e');
-      });
-      rp.listen((message) {
-        p('${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}'
-            ' isolate msg: $message');
-        if (message != null) {
-          var msg = TimerMessage.fromJson(message);
-          processTimerMessage(msg);
-          if (msg.statusCode == FINISHED) {
-            isolate.kill();
-            p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji
-                .redDot} isolate has been killed!');
+          } else {
+            var msg = TimerMessage.fromJson(data);
+            processTimerMessage(msg);
+            generationMonitor.addMessage(msg);
+            if (msg.statusCode == FINISHED) {
+              isolate.kill();
+              p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji
+                  .redDot} isolate has been killed!');
+            }
           }
+        } else {
+          sendFinishedMessage();
         }
       });
+
+      isolate = await Isolate.spawn<GenerationParameters>(
+          heavyTask, params,
+          paused: true,
+          onError: errorReceivePort.sendPort,
+          onExit:receivePort.sendPort );
+
+      isolate.addErrorListener(errorReceivePort.sendPort);
+      isolate.resume(isolate.pauseCapability!);
+      isolate.addOnExitListener(receivePort.sendPort);
+
+      errorReceivePort.listen((e) {
+        p('${Emoji.redDot}${Emoji.redDot} exception occurred: $e');
+      });
+      // receivePort.listen((message) {
+      //   p('${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}'
+      //       ' isolate msg: $message');
+      //   if (message != null) {
+      //     var msg = TimerMessage.fromJson(message);
+      //     processTimerMessage(msg);
+      //     if (msg.statusCode == FINISHED) {
+      //       isolate.kill();
+      //       p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji.redDot} isolate has been killed!');
+      //     }
+      //   }
+      // });
     } catch (e) {
       p('${Emoji.redDot} we have a problem ${Emoji.redDot} ${Emoji.redDot}');
     }
@@ -426,19 +472,24 @@ class GenerationPageState extends State<GenerationPage>
     //   p('${Emoji.leaf}${Emoji.leaf} Isolate is complete. Tell someone');
     // });
   }
-  void stopGenerator() {
-    timerGeneration.stop();
-    setState(() {
-      _isGeneration = false;
-    });
+
+  void sendFinishedMessage() {
+    var msg = TimerMessage(
+        date: DateTime.now().toIso8601String(),
+        message: 'Generation stopped',
+        statusCode: FINISHED, events: 0);
+    generationMonitor.addMessage(msg);
   }
+
 }
 
 class GenerationParameters {
   GenerationParameters(
       {required this.intervalInSeconds,
       required this.upperCount,
-      required this.maxTimerTicks, required this.url, this.sendPort});
+      required this.maxTimerTicks,
+      required this.url,
+      this.sendPort});
 
   final int intervalInSeconds;
   final int upperCount;
@@ -446,8 +497,6 @@ class GenerationParameters {
   final String url;
   SendPort? sendPort;
 }
-
-
 
 Future<void> heavyTask(GenerationParameters model) async {
   TimerGeneration gen = TimerGeneration();

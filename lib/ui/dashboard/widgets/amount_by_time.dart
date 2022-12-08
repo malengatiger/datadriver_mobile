@@ -29,7 +29,6 @@ class AmountByTime extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
 
-    p('$redDot $redDot AmountByTime build, dashboardData: ${dashboardData.toJson()}');
     // var currencySymbol = NumberFormat.compactCurrency(locale: Platform.localeName).currencySymbol;
     var currencyFormatter = NumberFormat.compact();
     var mTop = 48.0;

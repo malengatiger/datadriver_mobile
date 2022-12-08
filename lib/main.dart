@@ -42,18 +42,15 @@ Future<void> createIsolate() async {
       intervalInSeconds: 10,
       upperCount: 200,
       sendPort: rp.sendPort,
-      maxTimerTicks: 10);
+      maxTimerTicks: 3);
 
   var isolate = await Isolate.spawn<GenerationParameters>(
       heavyTask, params,);
   p('${Emoji.pear}${Emoji.pear}${Emoji.pear} isolate debug name is ${isolate.debugName}');
-  // isolate.addErrorListener(rp.sendPort);
-  // isolate.resume(isolate.pauseCapability!);
-  // isolate.addOnExitListener(rp.sendPort);
   rp.listen((message) {
     if (message != null) {
       p('${Emoji.diamond}${Emoji.diamond}${Emoji.diamond}${Emoji.diamond}'
-          ' msg from isolate: $message');
+          ' main.dart: msg from isolate: $message');
       var m = message as Map<String, dynamic>;
       if (m['statusCode'] == FINISHED) {
         p('${Emoji.diamond}${Emoji.diamond}${Emoji.diamond}${Emoji.diamond}'

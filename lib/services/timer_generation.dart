@@ -4,6 +4,7 @@ import 'dart:core';
 import 'dart:isolate';
 import 'dart:math';
 import 'package:http/http.dart' as http;
+import 'package:stream_channel/isolate_channel.dart';
 import 'package:universal_frontend/ui/generation/generation_page.dart';
 
 import '../data_models/city.dart';
@@ -46,9 +47,6 @@ class TimerGeneration {
   late Timer _timer;
   var _cities = <City>[];
   var random = Random(DateTime.now().millisecondsSinceEpoch);
-  // final StreamController<TimerMessage> _streamController =
-  //     StreamController.broadcast();
-  // Stream<TimerMessage> get stream => _streamController.stream;
 
   Future<List<City>> getCities(String url) async {
     var client = http.Client();
@@ -110,13 +108,16 @@ class TimerGeneration {
   }
 
   late SendPort sendPort;
-  void start({required GenerationParameters params}) async {
+
+  Future<void> start({required GenerationParameters params}) async {
+
+    p('$heartBlue $heartBlue $heartBlue TimerGeneration started ..... ${Emoji.redDot}');
     sendPort = params.sendPort!;
     _cities = await getCities(params.url);
     mCount = 0;
     _timer = Timer.periodic(Duration(seconds: params.intervalInSeconds),
         (timer) async {
-      p('$heartBlue Timer tick: ${timer.tick}');
+      p('$heartBlue $heartBlue Timer tick: ${timer.tick}');
       var count = random.nextInt(5);
       if (count == 0) count = 1;
       var success = 0;
@@ -175,7 +176,7 @@ class TimerGeneration {
         statusCode: FINISHED,
         cityName: '',
         events: 0);
-    // _streamController.sink.add(msg);
+    
     p('$redDot $redDot $redDot TimerGeneration: Timer cancelled, generation stopped');
   }
 }
