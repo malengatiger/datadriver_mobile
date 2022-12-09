@@ -3,7 +3,6 @@ import 'dart:collection';
 import 'package:animations/animations.dart';
 import 'package:emoji_alert/arrays.dart';
 import 'package:emoji_alert/emoji_alert.dart';
-import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:page_transition/page_transition.dart';
@@ -16,6 +15,7 @@ import 'package:universal_frontend/ui/generation/generation_page.dart';
 
 import '../../services/generation_monitor.dart';
 import '../../utils/emojis.dart';
+import '../../utils/hive_util.dart';
 import '../../utils/providers.dart';
 import '../../utils/util.dart';
 import '../aggregates/aggregate_page.dart';
@@ -36,16 +36,17 @@ class DashboardMobileState extends State<DashboardMobile>
   bool isGenerating = false;
   DashboardData? dashData;
   var apiService = ApiService();
+
   @override
   void initState() {
     _animationController = AnimationController(
         duration: const Duration(milliseconds: 2000),
         value: 0.0,
-        reverseDuration: const Duration(milliseconds: 500),
+        reverseDuration: const Duration(milliseconds: 3000),
         vsync: this);
     super.initState();
     _listen();
-    _getDashboardData();
+    _getLocalData();
   }
 
   void _listen() {
@@ -60,15 +61,16 @@ class DashboardMobileState extends State<DashboardMobile>
               ' Generation has completed. remove busy signal');
           isGenerating = false;
           showGenerator = false;
+          setState(() {});
+          _getDashboardData();
         } else {
           _processTimerMessage(message);
+          setState(() {});
         }
-        setState(() {
-
-        });
       }
     });
   }
+
   var cityHashMap = HashMap<String, String>();
   var totalGenerated = 0;
   bool showGenerator = false;
@@ -97,26 +99,76 @@ class DashboardMobileState extends State<DashboardMobile>
   }
 
 
+  void _getLocalData() async {
+    p('$redDot $redDot ...getting dashboard data from hive.............');
+    setState(() {
+      isLoading = true;
+    });
+    _animationController.reverse();
+
+    try {
+      p('${Emoji.brocolli} ... getting DashboardData from hive');
+      dashData = await hiveUtil.getLastDashboardData();
+      if (dashData != null) {
+        setState(() {
+          date = DateTime.parse(dashData!.date);
+          isLoading = false;
+        });
+      } else {
+        _getDashboardData();
+      }
+      _animationController.forward();
+    } catch (e) {
+      setState(() {
+        isGenerating = false;
+      });
+      var ding = EmojiAlert(
+        emojiSize: 32,
+        alertTitle: const Text('DataDriver+'),
+        background: Theme.of(context).backgroundColor,
+        height: 200,
+        emojiType: EMOJI_TYPE.CONFUSED,
+        description: Text(
+          'Error $e',
+          style: const TextStyle(fontSize: 11),
+        ),
+      );
+      ding.displayAlert(context);
+    }
+  }
+
+  DateTime? date;
   void _getDashboardData() async {
     p('$redDot $redDot ... getting dashboard data .............');
     setState(() {
       isLoading = true;
     });
     _animationController.reverse();
+
     try {
+      p('${Emoji.brocolli} ... getting DashboardData from remote');
+
       dashData = await apiService.getDashboardData(minutesAgo: minutesAgo);
+      await hiveUtil.addDashboardData(data: dashData!);
       setState(() {
         isLoading = false;
+        date = DateTime.parse(dashData!.date);
       });
       _animationController.forward();
     } catch (e) {
+      setState(() {
+        isLoading = false;
+        date = DateTime.parse(dashData!.date);
+      });
       var ding = EmojiAlert(
         emojiSize: 32,
         alertTitle: const Text('DataDriver+'),
+        background: Theme.of(context).backgroundColor,
+        height: 200,
         emojiType: EMOJI_TYPE.CONFUSED,
         description: Text(
           'Error $e',
-          style: const TextStyle(color: Colors.black),
+          style: const TextStyle(fontSize: 11),
         ),
       );
       ding.displayAlert(context);
@@ -137,19 +189,31 @@ class DashboardMobileState extends State<DashboardMobile>
           bottom: PreferredSize(
               preferredSize: const Size.fromHeight(32),
               child: Column(
-                children:  [
+                children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
-                    children:  [
-                      const MinutesAgoWidget(),
-                      const SizedBox(width: 24,),
-                      showGenerator? const SizedBox(
-                        width: 16, height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 4, backgroundColor: Colors.pink,
-                        ),
-                      ): const SizedBox(height: 0,),
-                      const SizedBox(width: 16,),
+                    children: [
+                      MinutesAgoWidget(
+                        date: date == null? DateTime.now(): date!,
+                      ),
+                      const SizedBox(
+                        width: 24,
+                      ),
+                      showGenerator
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 4,
+                                backgroundColor: Colors.pink,
+                              ),
+                            )
+                          : const SizedBox(
+                              height: 0,
+                            ),
+                      const SizedBox(
+                        width: 16,
+                      ),
                     ],
                   ),
                   const SizedBox(
@@ -191,7 +255,6 @@ class DashboardMobileState extends State<DashboardMobile>
                         height: 60,
                         width: 260,
                         child: Card(
-                          // color: Colors.red,
                           elevation: 8,
                           child: Padding(
                             padding:
@@ -219,71 +282,36 @@ class DashboardMobileState extends State<DashboardMobile>
                         ),
                       ),
                     )
-                  : Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: AnimatedBuilder(
-                          animation: _animationController,
-                          builder: (context, child) {
-                            return FadeScaleTransition(
-                              animation: _animationController,
-                              child: child,
-                            );
-                          },
-                          child: DashGrid(
-                            cardElevation: 4.0,
-                            height: 120,
-                            width: 240,
-                            backgroundColor: Theme.of(context).backgroundColor,
-                            gridColumns: 2,
-                            captionTextStyle: const TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.normal),
-                            numberTextStyle: const TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.w900),
-                            dashboardData: dashData!,
-                          ),
-                        ),
-                      ),
-                    ),
-            ],
-          ),
-          isGenerating
-              ? Positioned(
-                  right: 8,
-                  top: 8,
-                  child: SizedBox(
-                    height: 60,
-                    width: 160,
-                    child: Card(
-                      color: Colors.brown[100],
-                      elevation: 16,
-                      child: Center(
-                        child: Column(
-                          children: const [
-                            Text(
-                              'Generating events ...',
-                              style: TextStyle(fontSize: 12),
-                            ),
-                            SizedBox(
-                              height: 8,
-                            ),
-                            SizedBox(
-                              height: 16,
-                              width: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 6,
-                                backgroundColor: Colors.pink,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                  : const SizedBox(height: 0,),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: AnimatedBuilder(
+                    animation: _animationController,
+                    builder: (context, child) {
+                      return FadeScaleTransition(
+                        animation: _animationController,
+                        child: child,
+                      );
+                    },
+                    child: dashData == null? const SizedBox(height: 0,): DashGrid(
+                      cardElevation: 4.0,
+                      height: 120,
+                      width: 240,
+                      backgroundColor: Theme.of(context).backgroundColor,
+                      gridColumns: 2,
+                      captionTextStyle: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.normal),
+                      numberTextStyle: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.w900),
+                      dashboardData: dashData!,
                     ),
                   ),
-                )
-              : const SizedBox(
-                  height: 0,
                 ),
+              ),
+            ],
+          ),
+
           showTimeChooser
               ? Positioned(
                   left: 16,
@@ -304,17 +332,28 @@ class DashboardMobileState extends State<DashboardMobile>
           onTap: (value) {
             onNavTap(context, value);
           },
-          items: const [
-            BottomNavigationBarItem(
+          items: [
+            const BottomNavigationBarItem(
                 icon: Icon(Icons.list), label: 'Aggregates'),
-            BottomNavigationBarItem(
-                icon: Icon(Icons.access_alarm), label: 'Generator'),
-            BottomNavigationBarItem(
+            showGenerator
+                ? const BottomNavigationBarItem(
+                    icon: Icon(Icons.cancel_outlined), label: 'Cancel Gen.')
+                : const BottomNavigationBarItem(
+                    icon: Icon(Icons.access_alarm), label: 'Generator'),
+            const BottomNavigationBarItem(
               icon: Icon(Icons.area_chart_sharp),
               label: 'Charts',
             ),
           ]),
     );
+  }
+
+  void _cancelGeneration() {
+    p('${Emoji.redDot} Sending Stop message to the cancel stream');
+    generationMonitor.sendStopMessage();
+    setState(() {
+      showGenerator = false;
+    });
   }
 
   void onNavTap(BuildContext context, int index) {
@@ -323,7 +362,11 @@ class DashboardMobileState extends State<DashboardMobile>
         navigateToAggregates(context);
         break;
       case 1:
-        _navigateToGenerator();
+        if (showGenerator) {
+          _cancelGeneration();
+        } else {
+          _navigateToGenerator();
+        }
         break;
       case 2:
         _navigateToACityList();

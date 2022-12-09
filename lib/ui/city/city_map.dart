@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +15,6 @@ import 'dart:ui' as ui;
 import '../../data_models/city.dart';
 import '../../data_models/city_place.dart';
 import '../../utils/util.dart';
-import '../dashboard/widgets/minutes_ago_widget.dart';
 
 class CityMap extends StatefulWidget {
   const CityMap({super.key, required this.cityId});
@@ -249,7 +247,7 @@ class CityMapState extends State<CityMap> {
                   mapToolbarEnabled: true,
                   myLocationEnabled: true,
                   onMapCreated: (GoogleMapController controller) {
-                    p('$brocolli $brocolli onMapCreated: map is created and ready for markers!');
+                    p('${Emoji.brocolli} ${Emoji.brocolli} onMapCreated: map is created and ready for markers!');
                     googleMapController = controller;
                     _getData();
                   },

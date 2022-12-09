@@ -1,4 +1,3 @@
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +12,7 @@ import 'package:universal_frontend/utils/providers.dart';
 import 'package:animations/animations.dart';
 import 'package:badges/badges.dart';
 import '../../services/timer_generation.dart';
+import '../../utils/hive_util.dart';
 import '../../utils/util.dart';
 import '../city/city_map.dart';
 import '../dashboard/widgets/minutes_ago_widget.dart';
@@ -40,8 +40,8 @@ class AggregatePageState extends State<AggregatePage>
   void initState() {
     _animationController = AnimationController(
       value: 0.0,
-      duration: const Duration(milliseconds: 1500),
-      reverseDuration: const Duration(milliseconds: 75),
+      duration: const Duration(milliseconds: 2000),
+      reverseDuration: const Duration(milliseconds: 2000),
       vsync: this,
     )..addStatusListener((AnimationStatus status) {
         setState(() {
@@ -52,21 +52,68 @@ class AggregatePageState extends State<AggregatePage>
       });
     super.initState();
     p('.... initState inside AggregatePage $redDot');
-    _getAggregates();
+    _getLocalData();
   }
 
+  void _getLocalData() async {
+    p('${Emoji.brocolli} ... getting aggregates from hive cache ...');
+    setState(() {
+      isLoading = true;
+    });
+    // _animationController.reverse();
+    try {
+      aggregates = (await hiveUtil.getLastAggregates())!;
+      p('${Emoji.brocolli} ... last aggregates found in hive cache: '
+          '${aggregates.length}.');
+      setState(() {
+        isLoading = false;
+      });
+      if (aggregates.isEmpty) {
+        _getAggregates();
+        return;
+      }
+      _animationController.forward();
+      _getDataQuietly();
+
+    } catch (e) {
+      p('${Emoji.redDot}${Emoji.redDot} ERROR: $e');
+      p(e);
+      _getAggregates();
+      return;
+    }
+
+  }
+
+  Future<void> _getDataQuietly() async {
+    // _animationController.reverse();
+    p('_getDataQuietly starting ... refreshing aggregates ${Emoji.blueDot}');
+    aggregates = await apiService.getCityAggregates(minutes: minutesAgo);
+    if (aggregates.isNotEmpty) {
+      hiveUtil.addAggregates(aggregates: aggregates);
+    }
+    setState(() {
+    });
+  }
+
+
   void _getAggregates() async {
-    p('$brocolli ... getting aggregates ...');
+    p('${Emoji.brocolli} ... getting aggregates from Firestore via api...');
     setState(() {
       isLoading = true;
     });
     _animationController.reverse();
     aggregates = await apiService.getCityAggregates(minutes: minutesAgo);
-    setState(() {
-      isLoading = false;
-    });
+    if (aggregates.isNotEmpty) {
+      await hiveUtil.addAggregates(aggregates: aggregates);
+    }
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+      });
+      _animationController.forward();
+    }
 
-    _animationController.forward();
+
   }
 
   @override
@@ -176,43 +223,21 @@ class AggregatePageState extends State<AggregatePage>
                                 children: [
                                   Row(
                                     children: [
-                                      const SizedBox(
+                                       SizedBox(
                                           width: 100,
                                           child: Text(
                                             'Total Cities:',
-                                            style: TextStyle(fontSize: 12),
+                                            style: GoogleFonts.lato(
+                                                textStyle: Theme.of(context).textTheme.bodySmall,
+                                                fontWeight: FontWeight.normal, fontSize: 11),
                                           )),
                                       const SizedBox(
                                         width: 12,
                                       ),
                                       Text(
                                         '${aggregates.length}',
-                                        style: const TextStyle(
-                                          // color: Colors.indigo,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 4,
-                                  ),
-                                  Row(
-                                    children: [
-                                      const SizedBox(
-                                          width: 100,
-                                          child: Text(
-                                            'Total Amount:',
-                                            style: TextStyle(fontSize: 12),
-                                          )),
-                                      const SizedBox(
-                                        width: 12,
-                                      ),
-                                      Text(
-                                        amt,
-                                        style: const TextStyle(
-                                          // color: Colors.teal,
-                                            fontSize: 16,
+                                        style: GoogleFonts.secularOne(
+                                            textStyle: Theme.of(context).textTheme.bodyMedium,
                                             fontWeight: FontWeight.w900),
                                       ),
                                     ],
@@ -222,21 +247,46 @@ class AggregatePageState extends State<AggregatePage>
                                   ),
                                   Row(
                                     children: [
+                                       SizedBox(
+                                          width: 100,
+                                          child: Text(
+                                            'Total Amount:',
+                                            style: GoogleFonts.lato(
+                                                textStyle: Theme.of(context).textTheme.bodySmall,
+                                                fontWeight: FontWeight.normal, fontSize: 11),
+                                          )),
                                       const SizedBox(
+                                        width: 12,
+                                      ),
+                                      Text(
+                                        amt,
+                                        style: GoogleFonts.secularOne(
+                                            textStyle: Theme.of(context).textTheme.bodyMedium,
+                                            fontWeight: FontWeight.w900),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(
+                                    height: 4,
+                                  ),
+                                  Row(
+                                    children: [
+                                       SizedBox(
                                           width: 100,
                                           child: Text(
                                             'Total Events:',
-                                            style: TextStyle(fontSize: 12),
+                                            style: GoogleFonts.lato(
+                                                textStyle: Theme.of(context).textTheme.bodySmall,
+                                                fontWeight: FontWeight.normal, fontSize: 11),
                                           )),
                                       const SizedBox(
                                         width: 12,
                                       ),
                                       Text(
                                         formattedEvents,
-                                        style: const TextStyle(
-                                          // color: Colors.black,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold),
+                                        style: GoogleFonts.secularOne(
+                                            textStyle: Theme.of(context).textTheme.bodyMedium,
+                                            fontWeight: FontWeight.w900),
                                       ),
                                     ],
                                   ),
@@ -251,7 +301,7 @@ class AggregatePageState extends State<AggregatePage>
                       ),
                       InkWell(
                         onTap: _getAggregates,
-                        child: const MinutesAgoWidget(),
+                        child:  MinutesAgoWidget(date: DateTime.now(),),
                       ),
                       const SizedBox(
                         height: 12,
@@ -326,12 +376,22 @@ class AggregatePageState extends State<AggregatePage>
                     : Column(
                         children: [
                           kIsWeb //todo check!!!
-                              ? const SizedBox(
+                              ?  SizedBox(
                                   height: 80,
-                                  child: MinutesAgoWidget(),
+                                  child: MinutesAgoWidget(date: DateTime.now(),),
                                 )
-                              : const SizedBox(
-                                  height: 0,
+                              :  SizedBox(
+                                  height: 24,
+                                  child: Column(
+                                    children: [
+                                      Text('Average Rating and Total Spent',
+                                        style: GoogleFonts.lato(
+                                            textStyle: Theme.of(context).textTheme.bodySmall,
+                                            fontWeight: FontWeight.normal, fontSize: 12),
+                                      ),
+                                      const SizedBox(height: 8,),
+                                    ],
+                                  ),
                                 ),
                           aggregates.isEmpty
                               ? Center(
@@ -378,7 +438,7 @@ class AggregatePageState extends State<AggregatePage>
                                           aggregates: aggregates,
                                           sortBy: sortBy,
                                           onSelected: (cityAggregate) {
-                                            p('$brocolli city aggregate selected: ${cityAggregate.toJson()}');
+                                            p('${Emoji.brocolli} city aggregate selected: ${cityAggregate.toJson()}');
                                             if (widget.onSelected != null) {
                                               widget.onSelected!(cityAggregate);
                                             }
@@ -424,24 +484,7 @@ class AggregatePageState extends State<AggregatePage>
                                                         },
                                                         itemBuilder: (context) {
                                                           return [
-                                                            PopupMenuItem(
-                                                              value: 'goToMap',
-                                                              onTap: () {
-                                                                p('$redDot PopupMenuItem: city menu item tapped, goToMap: ${agg.cityName}');
-                                                                navigateToCityMap(
-                                                                    agg: agg);
-                                                              },
-                                                              child: ListTile(
-                                                                title: Text(
-                                                                  'Go to Map',
-                                                                  style:
-                                                                      thinStyle,
-                                                                ),
-                                                                leading: const Icon(
-                                                                    Icons
-                                                                        .location_on),
-                                                              ),
-                                                            ),
+
                                                             PopupMenuItem(
                                                               value:
                                                                   'sortByAmount',
@@ -535,9 +578,11 @@ class AggregatePageState extends State<AggregatePage>
                                                                     child: Text(
                                                                         fm.format(agg
                                                                             .totalSpent),
-                                                                        style: const TextStyle(
-                                                                            fontWeight:
-                                                                                FontWeight.w900))),
+                                                                      style: GoogleFonts.secularOne(
+                                                                          textStyle: Theme.of(context).textTheme.bodyMedium,
+                                                                          fontWeight: FontWeight.w900),
+                                                                    ),
+                                                                ),
                                                                 Flexible(
                                                                   child: Text(
                                                                     agg.cityName,

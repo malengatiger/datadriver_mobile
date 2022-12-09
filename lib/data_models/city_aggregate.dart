@@ -1,13 +1,28 @@
+import 'package:hive/hive.dart';
+part 'city_aggregate.g.dart';
+
+@HiveType(typeId: 1)
 class CityAggregate {
+  @HiveField(0)
   late double averageRating;
+  @HiveField(1)
   late String cityId;
+  @HiveField(2)
   late String cityName;
+  @HiveField(3)
   late String date;
+  @HiveField(4)
   late int numberOfEvents;
+  @HiveField(5)
   late int hours;
+  @HiveField(6)
   late double totalSpent;
+  @HiveField(7)
   late int longDate;
-  late double latitude, longitude;
+  @HiveField(8)
+  late double latitude;
+  @HiveField(9)
+  late double longitude;
 
   CityAggregate({
     required this.averageRating,
@@ -48,3 +63,14 @@ class CityAggregate {
         'longitude': longitude,
       };
 }
+/*
+@HiveType(typeId: 0)
+class Person extends HiveObject {
+
+  @HiveField(0)
+  String name;
+
+  @HiveField(1)
+  int age;
+}
+ */

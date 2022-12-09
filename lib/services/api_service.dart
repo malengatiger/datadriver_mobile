@@ -65,7 +65,7 @@ class ApiService implements AbstractApiService {
     try {
       p("$heartOrange HTTP Url: $fullUrl");
       var response = await client.get(Uri.parse(fullUrl));
-      p('$brocolli $brocolli We have a response from the DataDriver API! $heartOrange '
+      p('${Emoji.brocolli} ${Emoji.brocolli} We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200) {
         Iterable l = json.decode(response.body);
@@ -79,7 +79,7 @@ class ApiService implements AbstractApiService {
       }
     } catch (e) {
       p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
-      throw Exception('$redDot $redDot $redDot Network shit screwed up! $e');
+      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
     }
     return [];
   }
@@ -100,7 +100,7 @@ class ApiService implements AbstractApiService {
       var response = await client
           .get(Uri.parse(fullUrl))
           .timeout(const Duration(seconds: 30));
-      p('$brocolli $brocolli We have a response from the DataDriver API! $heartOrange '
+      p('${Emoji.brocolli} ${Emoji.brocolli} We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode} - ${response.body}');
       if (response.statusCode == 200) {
         var body = response.body;
@@ -113,7 +113,7 @@ class ApiService implements AbstractApiService {
       }
     } catch (e) {
       p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
-      throw Exception('$redDot $redDot $redDot Network shit screwed up! $e');
+      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
     }
   }
 
@@ -135,7 +135,7 @@ class ApiService implements AbstractApiService {
       var response = await client
           .get(Uri.parse(fullUrl))
           .timeout(const Duration(seconds: 120));
-      p('$brocolli $brocolli We have a response from the DataDriver API! $heartOrange '
+      p('${Emoji.brocolli} ${Emoji.brocolli} We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode} ');
 
       if (response.statusCode == 200) {
@@ -150,7 +150,7 @@ class ApiService implements AbstractApiService {
       }
     } catch (e) {
       p('$redDot $redDot $redDot Things got a little fucked up! $e');
-      throw Exception('$redDot $redDot $redDot Network shit screwed up! $e');
+      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
     }
   }
 
@@ -171,7 +171,7 @@ class ApiService implements AbstractApiService {
       var response = await client
           .get(Uri.parse(fullUrl))
           .timeout(const Duration(seconds: 120));
-      p('$brocolli $brocolli We have a response from the DataDriver API! '
+      p('${Emoji.brocolli} ${Emoji.brocolli} We have a response from the DataDriver API! '
           '$heartOrange statusCode: ${response.statusCode} body: ${response.body} ');
 
       if (response.statusCode == 200) {
@@ -184,7 +184,7 @@ class ApiService implements AbstractApiService {
       }
     } catch (e) {
       p('$redDot $redDot $redDot Things got a little fucked up! $e');
-      throw Exception('$redDot $redDot $redDot Network shit screwed up! $e');
+      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
     }
   }
 }

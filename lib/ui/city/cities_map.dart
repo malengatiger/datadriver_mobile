@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:collection';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -8,16 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:universal_frontend/data_models/dashboard_data.dart';
-import 'package:universal_frontend/data_models/event.dart';
 import 'package:universal_frontend/services/data_service.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/dash_card.dart';
 import 'package:universal_frontend/utils/emojis.dart';
-import 'package:universal_frontend/utils/providers.dart';
 import 'dart:ui' as ui;
 import '../../data_models/city.dart';
-import '../../data_models/city_place.dart';
 import '../../utils/util.dart';
-import '../dashboard/widgets/minutes_ago_widget.dart';
 
 class CitiesMap extends StatefulWidget {
   const CitiesMap({super.key, this.dashboardData, });
@@ -227,7 +221,7 @@ class CitiesMapState extends State<CitiesMap> {
                   mapToolbarEnabled: true,
                   myLocationEnabled: true,
                   onMapCreated: (GoogleMapController controller) {
-                    p('$brocolli $brocolli onMapCreated: map is created and ready for markers!');
+                    p('${Emoji.brocolli} ${Emoji.brocolli} onMapCreated: map is created and ready for markers!');
                     googleMapController = controller;
                     _getData();
                   },

@@ -4,12 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../utils/providers.dart';
 
 class MinutesAgoWidget extends StatelessWidget {
-  const MinutesAgoWidget({Key? key}) : super(key: key);
+  const MinutesAgoWidget({Key? key, required this.date}) : super(key: key);
+
+  final DateTime date;
 
   @override
   Widget build(BuildContext context) {
-    var hour = DateTime.now().hour;
-    var minute = DateTime.now().minute;
+    var hour = date.hour;
+    var minute = date.minute;
     var min = '';
     if (minute < 10) {
       min = '0$minute';

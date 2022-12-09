@@ -1,12 +1,25 @@
+import 'package:hive/hive.dart';
+part 'dashboard_data.g.dart';
+
+@HiveType(typeId: 0)
 class DashboardData {
+  @HiveField(0)
   late int events;
+  @HiveField(1)
   late int cities;
+  @HiveField(2)
   late int places;
+  @HiveField(3)
   late int users;
+  @HiveField(4)
   late int minutesAgo;
+  @HiveField(5)
   late double amount;
+  @HiveField(6)
   late double averageRating;
+  @HiveField(7)
   late String date;
+  @HiveField(8)
   late int longDate;
 
 /*

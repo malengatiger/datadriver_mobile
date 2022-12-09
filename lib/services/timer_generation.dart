@@ -4,7 +4,6 @@ import 'dart:core';
 import 'dart:isolate';
 import 'dart:math';
 import 'package:http/http.dart' as http;
-import 'package:stream_channel/isolate_channel.dart';
 import 'package:universal_frontend/ui/generation/generation_page.dart';
 
 import '../data_models/city.dart';
@@ -59,7 +58,7 @@ class TimerGeneration {
       var response = await client
           .get(Uri.parse(fullUrl))
           .timeout(const Duration(seconds: 30));
-      p('$brocolli $brocolli TimerGeneration: We have a response from the DataDriver API! $heartOrange '
+      p('${Emoji.brocolli} ${Emoji.brocolli} TimerGeneration: We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode}');
 
       if (response.statusCode == 200) {
@@ -90,7 +89,7 @@ class TimerGeneration {
       var response = await client
           .get(Uri.parse(fullUrl))
           .timeout(const Duration(seconds: 30));
-      p('$brocolli $brocolli TimerGeneration: We have a response from the DataDriver API! $heartOrange '
+      p('${Emoji.brocolli} ${Emoji.brocolli} TimerGeneration: We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode}');
       if (response.statusCode == 200) {
         var body = response.body;
@@ -151,7 +150,7 @@ class TimerGeneration {
     if (count < 10) count = 10;
     var result =
         await generateEventsByCity(cityId: city.id, count: count, url: url);
-    p('$appleRed $appleRed ${result.count} events generated for $brocolli ${city.city}\n');
+    p('$appleRed $appleRed ${result.count} events generated for ${Emoji.brocolli} ${city.city}\n');
 
     var msg = TimerMessage(
         date: DateTime.now().toIso8601String(),

@@ -42,7 +42,7 @@ Future<void> createIsolate() async {
       intervalInSeconds: 10,
       upperCount: 200,
       sendPort: rp.sendPort,
-      maxTimerTicks: 3);
+      maxTimerTicks: 1);
 
   var isolate = await Isolate.spawn<GenerationParameters>(
       heavyTask, params,);
@@ -53,8 +53,9 @@ Future<void> createIsolate() async {
           ' main.dart: msg from isolate: $message');
       var m = message as Map<String, dynamic>;
       if (m['statusCode'] == FINISHED) {
+        isolate.kill();
         p('${Emoji.diamond}${Emoji.diamond}${Emoji.diamond}${Emoji.diamond}'
-            ' isolate is done! finis!');
+            ' isolate is done! finis! - isolate killed!');
       }
     }
   });

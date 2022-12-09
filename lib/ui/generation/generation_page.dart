@@ -28,6 +28,17 @@ class GenerationPageState extends State<GenerationPage>
   void initState() {
     _controller = AnimationController(vsync: this);
     super.initState();
+    _listen();
+  }
+
+  void _listen() async {
+    generationMonitor.cancelStream.listen((event) {
+      p('${Emoji.redDot}${Emoji.redDot} '
+          'Received stop message from the cancel stream! ${Emoji.redDot}${Emoji.redDot}');
+      isolate.kill();
+      p('${Emoji.redDot} ${Emoji.redDot} Isolate has been slaughtered; '
+          '${Emoji.appleGreen} generation stopped');
+    });
   }
 
   @override

@@ -5,7 +5,7 @@ import 'package:universal_frontend/utils/emojis.dart';
 
 import '../utils/util.dart';
 
-GenerationMonitor generationMonitor = GenerationMonitor._instance;
+final GenerationMonitor generationMonitor = GenerationMonitor._instance;
 
 class GenerationMonitor {
   static final GenerationMonitor _instance = GenerationMonitor._internal();
@@ -27,9 +27,17 @@ class GenerationMonitor {
    final StreamController<TimerMessage> _controller = StreamController.broadcast();
    Stream<TimerMessage>  get timerStream => _controller.stream;
 
-   addMessage(TimerMessage timerMessage) {
+   final StreamController<String> _controller2 = StreamController.broadcast();
+  Stream<String>  get cancelStream => _controller2.stream;
+
+   void addMessage(TimerMessage timerMessage) {
     p('${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen} '
         'adding timer message to stream ...');
     _controller.sink.add(timerMessage);
+  }
+  void sendStopMessage() {
+    p('${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen} '
+        'adding stop timer message to stream ...');
+    _controller2.sink.add('Stop');
   }
 }

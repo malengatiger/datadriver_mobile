@@ -1,3 +1,4 @@
+
 class Event {
   late String eventId;
   late String cityId;

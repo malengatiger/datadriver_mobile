@@ -41,7 +41,7 @@ final myUsersCountFutureProvider = FutureProvider((ref) async {
 //
 // final myCityEventGeneratorProvider =
 //     FutureProvider.family<Future<GenerationMessage>, GenerateEventsByCityParams>((ref, params) async {
-//   p('$brocolli inside myCityEventGeneratorProvider ... cityId ${params.cityId}');
+//   p('${Emoji.brocolli} inside myCityEventGeneratorProvider ... cityId ${params.cityId}');
 //   return ref.watch(apiProvider).generateEventsByCity(cityId: params.cityId, count: params.count);
 // });
 
