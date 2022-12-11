@@ -25,6 +25,7 @@ class CacheManager extends StatefulWidget {
 class CacheManagerState extends State<CacheManager>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  ScrollController listScrollController = ScrollController();
   late Isolate isolate;
   late ReceivePort receivePort = ReceivePort();
   var messages = <CacheMessage>[];
@@ -142,11 +143,13 @@ class CacheManagerState extends State<CacheManager>
                 p('........... type not available! wtf? ${Emoji.redDot}');
                 break;
             }
+            _scrollToBottom();
           } catch (e) {
             p(e);
             setState(() {
               isCaching = false;
             });
+            _scrollToBottom();
 
           }
         }
@@ -199,6 +202,17 @@ class CacheManagerState extends State<CacheManager>
     // });
   }
 
+  void _scrollToBottom() {
+    if (listScrollController.hasClients) {
+      final position = listScrollController.position.maxScrollExtent;
+      listScrollController.animateTo(
+        position,
+        duration: const Duration(seconds: 1),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -232,6 +246,7 @@ class CacheManagerState extends State<CacheManager>
                     Expanded(
                       child: ListView.builder(
                           itemCount: messages.length,
+                          controller: listScrollController,
                           itemBuilder: (context, index) {
                             var msg = messages.elementAt(index);
                             return messages.isEmpty

@@ -45,4 +45,4 @@ final myUsersCountFutureProvider = FutureProvider((ref) async {
 //   return ref.watch(apiProvider).generateEventsByCity(cityId: params.cityId, count: params.count);
 // });
 
-var minutesAgo = 60;
+var minutesAgo = 120;

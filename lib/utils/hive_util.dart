@@ -134,15 +134,12 @@ class HiveUtil {
 
   Future<List<CityAggregate>?> getLastAggregates() async {
     await _init();
-    var values = await aggregateBox.getAllValues();
-    p('${Emoji.redDot} HiveUtil: ${values.length} values found: $values');
     var keys = await aggregateBox.getAllKeys();
     keys.sort((a, b) => b.compareTo(a));
     var list = <CityAggregate>[];
     if (keys.isNotEmpty) {
       var bag = await aggregateBox.get(keys[0]);
       if (bag != null) {
-        // p('🔷🔷🔷🔷HiveUtil: bag found in cache: ${bag.toJson()}');
         for (var value in bag.list) {
           list.add(value);
         }

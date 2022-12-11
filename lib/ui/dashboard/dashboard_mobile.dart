@@ -43,7 +43,7 @@ class DashboardMobileState extends State<DashboardMobile>
     _animationController = AnimationController(
         duration: const Duration(milliseconds: 2000),
         value: 0.0,
-        reverseDuration: const Duration(milliseconds: 3000),
+        reverseDuration: const Duration(milliseconds: 5000),
         vsync: this);
     super.initState();
     _listen();
@@ -75,6 +75,8 @@ class DashboardMobileState extends State<DashboardMobile>
   var cityHashMap = HashMap<String, String>();
   var totalGenerated = 0;
   bool showGenerator = false;
+  DateTime? dashDate;
+
 
   void _processTimerMessage(TimerMessage message) {
     if (message.statusCode == FINISHED) {
@@ -90,15 +92,17 @@ class DashboardMobileState extends State<DashboardMobile>
     }
     cityHashMap[message.cityName!] = message.cityName!;
     totalGenerated += message.events;
-    try {
-      setState(() {
-        showGenerator = true;
-      });
-    } catch (e) {
-      p('${Emoji.redDot} Ignored setState error ${Emoji.redDot}${Emoji.redDot}');
+    if (mounted) {
+      try {
+        setState(() {
+          showGenerator = true;
+        });
+      } catch (e) {
+        p('${Emoji.redDot} Ignored setState error ${Emoji.redDot}${Emoji
+            .redDot}');
+      }
     }
   }
-
 
   void _getLocalData() async {
     p('$redDot $redDot ...getting dashboard data from hive.............');
@@ -111,10 +115,12 @@ class DashboardMobileState extends State<DashboardMobile>
       p('${Emoji.brocolli} ... getting DashboardData from hive');
       dashData = await hiveUtil.getLastDashboardData();
       if (dashData != null) {
+
         setState(() {
-          date = DateTime.parse(dashData!.date);
+          dashDate = DateTime.parse(dashData!.date);
           isLoading = false;
         });
+        _getDashboardDataQuietly();
       } else {
         _getDashboardData();
       }
@@ -138,7 +144,6 @@ class DashboardMobileState extends State<DashboardMobile>
     }
   }
 
-  DateTime? date;
   void _getDashboardData() async {
     p('$redDot $redDot ... getting dashboard data .............');
     setState(() {
@@ -150,22 +155,61 @@ class DashboardMobileState extends State<DashboardMobile>
       p('${Emoji.brocolli} ... getting DashboardData from remote');
 
       dashData = await apiService.getDashboardData(minutesAgo: minutesAgo);
+      dashData!.date = DateTime.now().toIso8601String();
+      dashDate = DateTime.parse(dashData!.date);
       await hiveUtil.addDashboardData(data: dashData!);
       setState(() {
         isLoading = false;
-        date = DateTime.parse(dashData!.date);
+        dashDate = DateTime.parse(dashData!.date).toLocal();
       });
       _animationController.forward();
     } catch (e) {
       setState(() {
         isLoading = false;
-        date = DateTime.parse(dashData!.date);
+        date = DateTime.parse(dashData!.date).toLocal();
       });
       var ding = EmojiAlert(
         emojiSize: 32,
         alertTitle: const Text('DataDriver+'),
         background: Theme.of(context).backgroundColor,
-        height: 220,
+        height: 360,
+        emojiType: EMOJI_TYPE.CONFUSED,
+        description: Text(
+          'Error $e',
+          style: const TextStyle(fontSize: 11),
+        ),
+      );
+      ding.displayAlert(context);
+    }
+  }
+
+
+  DateTime? date;
+  void _getDashboardDataQuietly() async {
+    p('$redDot $redDot ... getting dashboard data QUIETLY .............');
+
+    setState(() {
+      isGenerating = true;
+    });
+    try {
+      p('${Emoji.brocolli} ... getting DashboardData from remote');
+      dashData = await apiService.getDashboardData(minutesAgo: minutesAgo);
+      dashData!.date = DateTime.now().toIso8601String();
+      dashDate = DateTime.parse(dashData!.date);
+      await hiveUtil.addDashboardData(data: dashData!);
+      setState(() {
+        isGenerating = false;
+      });
+      _animationController.forward();
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      var ding = EmojiAlert(
+        emojiSize: 32,
+        alertTitle: const Text('DataDriver+'),
+        background: Theme.of(context).backgroundColor,
+        height: 360,
         emojiType: EMOJI_TYPE.CONFUSED,
         description: Text(
           'Error $e',
@@ -195,7 +239,7 @@ class DashboardMobileState extends State<DashboardMobile>
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       MinutesAgoWidget(
-                        date: date == null? DateTime.now(): date!,
+                        date: dashDate == null? DateTime.now(): dashDate!,
                       ),
                       const SizedBox(
                         width: 24,

@@ -29,7 +29,6 @@ class ApiService implements AbstractApiService {
   }
 
   void setStatus() {
-    p('$heartOrange $heartOrange  setting current status  ...');
     currentStatus = dotenv.env['CURRENT_STATUS'];
     if (currentStatus == 'dev') {
       url = dotenv.env['DEV_URL']!;
@@ -37,7 +36,7 @@ class ApiService implements AbstractApiService {
     if (currentStatus == 'prod') {
       url = dotenv.env['PROD_URL']!;
     }
-    p('$redDot HttpService url: $url');
+    // p('$redDot HttpService url: $url');
   }
 
   @override

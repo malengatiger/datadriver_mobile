@@ -40,7 +40,7 @@ class AggregatePageState extends State<AggregatePage>
   void initState() {
     _animationController = AnimationController(
       value: 0.0,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 3000),
       reverseDuration: const Duration(milliseconds: 2000),
       vsync: this,
     )..addStatusListener((AnimationStatus status) {
@@ -91,8 +91,9 @@ class AggregatePageState extends State<AggregatePage>
     if (aggregates.isNotEmpty) {
       hiveUtil.addAggregates(aggregates: aggregates);
     }
-    setState(() {
-    });
+    if (mounted) {
+      setState(() {});
+    }
   }
 
 

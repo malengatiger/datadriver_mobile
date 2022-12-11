@@ -79,10 +79,13 @@ class GenerationPageState extends State<GenerationPage>
     }
     cityHashMap[message.cityName!] = message.cityName!;
     totalGenerated += message.events;
-    try {
-      setState(() {});
-    } catch (e) {
-      p('${Emoji.redDot} Ignored setState error ${Emoji.redDot}${Emoji.redDot}');
+    if (mounted) {
+      try {
+        setState(() {});
+      } catch (e) {
+        p('${Emoji.redDot} Ignored setState error ${Emoji.redDot}${Emoji
+            .redDot}');
+      }
     }
   }
 
