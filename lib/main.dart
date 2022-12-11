@@ -13,6 +13,7 @@ import 'package:universal_frontend/services/timer_generation.dart';
 import 'package:universal_frontend/ui/dashboard/dashboard_main.dart';
 import 'package:universal_frontend/ui/generation/generation_page.dart';
 import 'package:universal_frontend/utils/emojis.dart';
+import 'package:universal_frontend/utils/hive_util.dart';
 import 'package:universal_frontend/utils/util.dart';
 
 import 'firebase_options.dart';
@@ -42,7 +43,7 @@ Future<void> createIsolate() async {
       intervalInSeconds: 10,
       upperCount: 200,
       sendPort: rp.sendPort,
-      maxTimerTicks: 1);
+      maxTimerTicks: 0);
 
   var isolate = await Isolate.spawn<GenerationParameters>(
       heavyTask, params,);
@@ -88,8 +89,12 @@ Future<void> main() async {
   } else {
     p('$blueDot User already exists. $blueDot Cool!');
   }
+
+  var list = await hiveUtil.getCities();
+  p('💙💙💙💙💙 ... Cities from Hive cache: ${list?.length}');
   createIsolate();
   DataService.listenForAuth();
+  DataService.getPaginatedEvents(cityId: 'c0751f57-2493-47f8-b8a6-664637992db5', days: 10, limit: 100);
   if (kIsWeb) {
     p('💙💙💙💙💙 We are running on the web!');
   }

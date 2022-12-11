@@ -47,13 +47,13 @@ class TimerGeneration {
   var _cities = <City>[];
   var random = Random(DateTime.now().millisecondsSinceEpoch);
 
-  Future<List<City>> getCities(String url) async {
+  static Future<List<City>> getCities(String url) async {
     var client = http.Client();
     var suffix1 = 'getCities';
     var fullUrl = '';
     fullUrl = '$url$suffix1';
     var cities = <City>[];
-    try {
+    // try {
       p("$heartOrange HTTP Url: $fullUrl");
       var response = await client
           .get(Uri.parse(fullUrl))
@@ -62,17 +62,18 @@ class TimerGeneration {
           'statusCode: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        Iterable l = json.decode(response.body);
-        cities = List<City>.from(l.map((model) => City.fromJson(model)));
+        Iterable mIterable = json.decode(response.body);
+        // mIterable.map((e) => p(e));
+        cities = List<City>.from(mIterable.map((model) => City.fromJson(model)));
       } else {
         p('$redDot Error Response status code: ${response.statusCode}');
         throw Exception(
             '$redDot $redDot $redDot Server could not handle request: ${response.body}');
       }
-    } catch (e) {
-      p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
-      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
-    }
+    // } catch (e) {
+    //   p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
+    //   throw Exception('$redDot $redDot $redDot Network screwed up! $e');
+    // }
     return cities;
   }
 
@@ -86,11 +87,15 @@ class TimerGeneration {
 
     try {
       p("$heartOrange HTTP Url: $fullUrl");
+      var start = DateTime.now().millisecondsSinceEpoch;
       var response = await client
           .get(Uri.parse(fullUrl))
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 60));
       p('${Emoji.brocolli} ${Emoji.brocolli} TimerGeneration: We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode}');
+      var end = DateTime.now().millisecondsSinceEpoch;
+      var elapsed = (end - start)/1000;
+      p('${Emoji.brocolli} ${Emoji.brocolli} Elapsed time: ${elapsed.toStringAsFixed(1)} seconds for network call');
       if (response.statusCode == 200) {
         var body = response.body;
         var msg = GenerationMessage.fromJson(jsonDecode(body));
@@ -149,7 +154,7 @@ class TimerGeneration {
     var count = random.nextInt(upperCount);
     if (count < 10) count = 10;
     var result =
-        await generateEventsByCity(cityId: city.id, count: count, url: url);
+        await generateEventsByCity(cityId: city.id!, count: count, url: url);
     p('$appleRed $appleRed ${result.count} events generated for ${Emoji.brocolli} ${city.city}\n');
 
     var msg = TimerMessage(

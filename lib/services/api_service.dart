@@ -95,13 +95,17 @@ class ApiService implements AbstractApiService {
     } else {
       throw Exception('Url from .env not found');
     }
+    var start = DateTime.now().millisecondsSinceEpoch;
     try {
       p("$heartOrange HTTP Url: $fullUrl");
       var response = await client
           .get(Uri.parse(fullUrl))
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 120));
       p('${Emoji.brocolli} ${Emoji.brocolli} We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode} - ${response.body}');
+      var end = DateTime.now().millisecondsSinceEpoch;
+      var elapsed = (end - start)/1000;
+      p('${Emoji.brocolli} ${Emoji.brocolli} Elapsed time: ${elapsed.toStringAsFixed(1)} seconds for network call');
       if (response.statusCode == 200) {
         var body = response.body;
         var msg = GenerationMessage.fromJson(jsonDecode(body));
@@ -131,12 +135,17 @@ class ApiService implements AbstractApiService {
     }
     try {
       p("$heartOrange HTTP Url: $fullUrl");
+      var start = DateTime.now().millisecondsSinceEpoch;
 
       var response = await client
           .get(Uri.parse(fullUrl))
           .timeout(const Duration(seconds: 120));
       p('${Emoji.brocolli} ${Emoji.brocolli} We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode} ');
+
+      var end = DateTime.now().millisecondsSinceEpoch;
+      var elapsed = (end - start)/1000;
+      p('${Emoji.brocolli} ${Emoji.brocolli} Elapsed time: ${elapsed.toStringAsFixed(1)} seconds for network call');
 
       if (response.statusCode == 200) {
         Iterable l = json.decode(response.body);
@@ -168,11 +177,16 @@ class ApiService implements AbstractApiService {
     }
     try {
       p("$heartOrange getDashboardData: Url: $fullUrl");
+      var start = DateTime.now().millisecondsSinceEpoch;
+
       var response = await client
           .get(Uri.parse(fullUrl))
           .timeout(const Duration(seconds: 120));
       p('${Emoji.brocolli} ${Emoji.brocolli} We have a response from the DataDriver API! '
           '$heartOrange statusCode: ${response.statusCode} body: ${response.body} ');
+      var end = DateTime.now().millisecondsSinceEpoch;
+      var elapsed = (end - start)/1000;
+      p('${Emoji.brocolli} ${Emoji.brocolli} Elapsed time: ${elapsed.toStringAsFixed(1)} seconds for network call');
 
       if (response.statusCode == 200) {
         results = DashboardData.fromJson(json.decode(response.body));

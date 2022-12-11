@@ -1,16 +1,35 @@
+import 'package:hive/hive.dart';
+
+import '../utils/util.dart';
+
+part 'city.g.dart';
+
+@HiveType(typeId: 7)
 class City {
-  late String city;
-  late String lat;
-  late String lng;
-  late String country;
-  late String iso2;
-  late String adminName;
-  late String populationProper;
-  late String capital;
-  late double latitude;
-  late double longitude;
-  late int pop;
-  late String id;
+  @HiveField(0)
+  String? city;
+  @HiveField(1)
+  String? lat;
+  @HiveField(2)
+  String? lng;
+  @HiveField(3)
+  String? country;
+  @HiveField(4)
+  String? iso2;
+  @HiveField(5)
+  String? adminName;
+  @HiveField(6)
+  String? populationProper;
+  @HiveField(7)
+  String? capital;
+  @HiveField(8)
+  double? latitude;
+  @HiveField(9)
+  double? longitude;
+  @HiveField(10)
+  int? pop;
+  @HiveField(11)
+  String? id;
   City(
       {required this.id,
       required this.city,
@@ -25,18 +44,21 @@ class City {
       required this.capital});
 
   City.fromJson(Map<String, dynamic> map) {
+    // p(map);
     lat = map['lat'];
     id = map['id'];
     city = map['city'];
     country = map['country'];
-    adminName = map['admin_name'];
     latitude = map['latitude'];
-    populationProper = map['population_proper'];
+    populationProper = map['populationProper'];
     lng = map['lng'];
     capital = map['capital'];
     latitude = map['latitude'];
     longitude = map['longitude'];
     pop = map['pop'];
+    if (map['adminMame'] != null) {
+      adminName = map['adminMame'];
+    }
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{

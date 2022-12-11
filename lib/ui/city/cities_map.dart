@@ -75,9 +75,9 @@ class CitiesMapState extends State<CitiesMap> {
     _markers.clear();
     for (var city in cities) {
       var marker = Marker(
-        markerId: MarkerId(city.id),
+        markerId: MarkerId(city.id!),
         // icon: BitmapDescriptor.fromBytes(markIcon),
-        position: LatLng(city.latitude, city.longitude),
+        position: LatLng(city.latitude!, city.longitude!),
         infoWindow: InfoWindow(
             title: city.city,
             onTap: () {
@@ -88,7 +88,7 @@ class CitiesMapState extends State<CitiesMap> {
       _markers.add(marker);
     }
     var latLng =
-        LatLng(cities.first.latitude, cities.first.longitude);
+        LatLng(cities.first.latitude!, cities.first.longitude!);
     googleMapController!.animateCamera(CameraUpdate.newLatLngZoom(latLng, 6));
     p('$diamond $diamond CitiesMap: ... finished putting city markers on map');
     setState(() {});
@@ -320,7 +320,7 @@ class CityCard extends StatelessWidget {
                 ],
               ),
               Text(
-                city.city,
+                city.city!,
                 style:
                 const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white),
               ),
@@ -333,7 +333,7 @@ class CityCard extends StatelessWidget {
                     color: Colors.white
                   ),)),
                   Text(
-                    city.adminName,
+                    city.adminName!,
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
@@ -348,7 +348,7 @@ class CityCard extends StatelessWidget {
                       color: Colors.white
                   ))),
                   Text(
-                    city.populationProper,
+                    city.populationProper!,
                     style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,

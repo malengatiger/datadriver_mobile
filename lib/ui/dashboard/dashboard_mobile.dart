@@ -12,6 +12,7 @@ import 'package:universal_frontend/services/timer_generation.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/minutes_ago_widget.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/time_chooser.dart';
 import 'package:universal_frontend/ui/generation/generation_page.dart';
+import 'package:universal_frontend/utils/cache_manager.dart';
 
 import '../../services/generation_monitor.dart';
 import '../../utils/emojis.dart';
@@ -164,7 +165,7 @@ class DashboardMobileState extends State<DashboardMobile>
         emojiSize: 32,
         alertTitle: const Text('DataDriver+'),
         background: Theme.of(context).backgroundColor,
-        height: 200,
+        height: 220,
         emojiType: EMOJI_TYPE.CONFUSED,
         description: Text(
           'Error $e',
@@ -264,7 +265,7 @@ class DashboardMobileState extends State<DashboardMobile>
                                 SizedBox(
                                   height: 4,
                                 ),
-                                Text('Loading dashboard ...'),
+                                Text('Loading dashboard ...', style: TextStyle(fontSize: 11),),
                                 SizedBox(
                                   width: 24,
                                 ),
@@ -341,8 +342,8 @@ class DashboardMobileState extends State<DashboardMobile>
                 : const BottomNavigationBarItem(
                     icon: Icon(Icons.access_alarm), label: 'Generator'),
             const BottomNavigationBarItem(
-              icon: Icon(Icons.area_chart_sharp),
-              label: 'Charts',
+              icon: Icon(Icons.cached),
+              label: 'Cache',
             ),
           ]),
     );
@@ -383,7 +384,17 @@ class DashboardMobileState extends State<DashboardMobile>
             child: const AggregatePage()));
   }
 
-  void _navigateToACityList() {}
+  void _navigateToACityList() {
+    Navigator.push(
+        context,
+        PageTransition(
+            type: PageTransitionType.scale,
+            alignment: Alignment.bottomCenter,
+            duration: const Duration(milliseconds: 1000),
+            child: const CacheManager()));
+
+
+  }
 
   void _navigateToGenerator() {
     Navigator.push(

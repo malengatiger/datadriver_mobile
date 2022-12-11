@@ -123,16 +123,26 @@ class AggregatePageState extends State<AggregatePage>
   }
 
   void navigateToCityMap({required CityAggregate agg}) {
-    p('$appleGreen $appleGreen Navigating to city map:  ${agg.cityName} ...');
-    Navigator.push(
-        context,
-        PageTransition(
-            type: PageTransitionType.scale,
-            alignment: Alignment.bottomCenter,
-            duration: const Duration(milliseconds: 1000),
-            child: CityMap(
-              cityId: agg.cityId,
-            )));
+    p('$appleGreen $appleGreen Navigating to city map:  ${agg.cityName} ... ${DateTime.now().toIso8601String()}');
+    try {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        p('$appleGreen $appleGreen trying to launch city map after delay:  ${agg.cityName} ... ${DateTime.now().toIso8601String()}');
+
+        Navigator.push(
+            context,
+            PageTransition(
+                type: PageTransitionType.scale,
+                alignment: Alignment.bottomCenter,
+                duration: const Duration(milliseconds: 1000),
+                child: CityMap(aggregate: agg,)));
+        p('$appleGreen $appleGreen Did it happen?:  ${agg.cityName} ...');
+        return "I am data";
+        // throw Exception("Custom Error");
+      });
+
+    } catch (e) {
+      p(e);
+    }
   }
 
   void showTimerSnack({
@@ -484,7 +494,24 @@ class AggregatePageState extends State<AggregatePage>
                                                         },
                                                         itemBuilder: (context) {
                                                           return [
-
+                                                            PopupMenuItem(
+                                                              value: 'goToMap',
+                                                              onTap: () {
+                                                                p('$redDot PopupMenuItem: city menu item tapped, goToMap: ${agg.cityName}');
+                                                                navigateToCityMap(
+                                                                    agg: agg);
+                                                              },
+                                                              child: ListTile(
+                                                                title: Text(
+                                                                  'Go to Map',
+                                                                  style:
+                                                                  thinStyle,
+                                                                ),
+                                                                leading: const Icon(
+                                                                    Icons
+                                                                        .location_on),
+                                                              ),
+                                                            ),
                                                             PopupMenuItem(
                                                               value:
                                                                   'sortByAmount',

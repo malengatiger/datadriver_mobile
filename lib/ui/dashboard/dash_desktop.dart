@@ -135,7 +135,7 @@ class DashDesktopState extends State<DashDesktop>
             type: PageTransitionType.scale,
             alignment: Alignment.bottomCenter,
             duration: const Duration(milliseconds: 1000),
-            child:  CityMap(cityId: aggregate.cityId)));
+            child:  CityMap(aggregate: aggregate)));
   }
   _onSelected(int index) {
     setState(() {

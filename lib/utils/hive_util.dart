@@ -3,12 +3,19 @@ import 'dart:io';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:universal_frontend/data_models/aggregate_bag.dart';
+import 'package:universal_frontend/data_models/city.dart';
 import 'package:universal_frontend/data_models/city_aggregate.dart';
 import 'package:universal_frontend/data_models/dashboard_data.dart';
 import 'package:universal_frontend/data_models/event.dart';
+import 'package:universal_frontend/data_models/event_bag.dart';
+import 'package:universal_frontend/data_models/geometry.dart';
+import 'package:universal_frontend/data_models/location.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:universal_frontend/utils/util.dart';
 
+import '../data_models/city_place.dart';
+
+const stillWorking = 201, doneCaching = 200;
 HiveUtil hiveUtil = HiveUtil._instance;
 
 class HiveUtil {
@@ -31,7 +38,9 @@ class HiveUtil {
   late final BoxCollection boxCollection;
   late CollectionBox<AggregateBag> aggregateBox;
   late CollectionBox<DashboardData> dashboardDataBox;
-  late CollectionBox<List<dynamic>> eventBox;
+  late CollectionBox<Event> eventBox;
+  late CollectionBox<City> cityBox;
+  late CollectionBox<CityPlace> cityPlaceBox;
   bool isInitialized = false;
 
   _init() async {
@@ -42,7 +51,7 @@ class HiveUtil {
 
       boxCollection = await BoxCollection.open(
         'MyGreatBox', // Name of your database
-        {'events', 'aggregateBags', 'dashboardData'}, // Names of your boxes
+        {'events', 'aggregateBags', 'dashboardData', 'cities', 'cityPlaces'}, // Names of your boxes
         path: file
             .path, // Path where to store your boxes (Only used in Flutter / Dart IO)
       );
@@ -50,6 +59,12 @@ class HiveUtil {
       Hive.registerAdapter(DashboardDataAdapter());
       Hive.registerAdapter(AggregateBagAdapter());
       Hive.registerAdapter(CityAggregateAdapter());
+      Hive.registerAdapter(EventBagAdapter());
+      Hive.registerAdapter(EventAdapter());
+      Hive.registerAdapter(CityAdapter());
+      Hive.registerAdapter(CityPlaceAdapter());
+      Hive.registerAdapter(GeometryAdapter());
+      Hive.registerAdapter(LocationAdapter());
 
       p('${Emoji.peach}${Emoji.peach}${Emoji.peach} Hive box collection created');
 
@@ -58,7 +73,9 @@ class HiveUtil {
           await boxCollection.openBox<AggregateBag>('aggregateBags');
       dashboardDataBox =
           await boxCollection.openBox<DashboardData>('dashboardData');
-      eventBox = await boxCollection.openBox<List<Event>>('events');
+      eventBox = await boxCollection.openBox<Event>('events');
+      cityBox = await boxCollection.openBox<City>('cities');
+      cityPlaceBox = await boxCollection.openBox<CityPlace>('cityPlaces');
 
       isInitialized = true;
       p('${Emoji.peach} ${Emoji.peach} Hive has been initialized and boxes opened');
@@ -101,6 +118,20 @@ class HiveUtil {
     p('${Emoji.peach}${Emoji.peach} CityAggregates have been cached in Hive');
   }
 
+  Future<void> addCities({required List<City> cities}) async {
+    await _init();
+    p('\n${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach} '
+        'HiveUtil: adding ${cities.length} cities to Hive');
+
+    for (var city in cities) {
+      await cityBox.put(city.id!, city);
+      p('\n${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach}'
+          ' HiveUtil: City ${city.city} has been cached in Hive\n');
+    }
+
+
+  }
+
   Future<List<CityAggregate>?> getLastAggregates() async {
     await _init();
     var values = await aggregateBox.getAllValues();
@@ -122,32 +153,49 @@ class HiveUtil {
     return [];
   }
 
-  // Future<void> addEvents({required List<Event> events}) async {
-  //   await _init();
-  //   var date = DateTime.parse(events[0].date);
-  //   String key = _getKey(date);
-  //   await eventBox.put(key, events);
-  //   p('${Emoji.peach}${Emoji.peach} ${events.length} Events have been cached in Hive');
-  // }
-  //
-  // Future<List<Event>?> getLastEvents() async {
-  //   await _init();
-  //   var keys = await eventBox.getAllKeys();
-  //   var list = <Event>[];
-  //   if (keys.isNotEmpty) {
-  //     // t descending
-  //     var data = await aggregateBox.get(keys[0]);
-  //     if (data != null) {
-  //       p('🔷🔷🔷🔷dynamics found in cache: ${data.length}');
-  //       for (var value in data) {
-  //         var mJson = value as Map<String, dynamic>;
-  //         p(mJson);
-  //         var m = Event.fromJson(mJson);
-  //         list.add(m);
-  //       }
-  //     }
-  //   }
-  //   p('🔷🔷🔷🔷events found in cache: ${list.length}');
-  //   return list;
-  // }
+  Future<List<City>?> getCities() async {
+    await _init();
+    var keys = await cityBox.getAllKeys();
+    p('HiveUtil:  🔴🔴 getting cities from cache ....  🔴 keys: ${keys.length}');
+    keys.sort((a, b) => a.compareTo(b));
+    var list = <City>[];
+    if (keys.isNotEmpty) {
+      for (var key in keys) {
+        var city = await cityBox.get(key);
+        if (city != null) {
+          list.add(city);
+        }
+      }
+
+      p('🔷🔷🔷🔷HiveUtil: cities found in cache: ${list.length}');
+      return list;
+    } else {
+      p('No cities found in cache');
+    }
+    return [];
+  }
+
+  Future<void> addEvents({required List<Event> events}) async {
+    await _init();
+
+    for (var e in events) {
+      String key = '${e.cityId}-${e.placeId}-${e.eventId}';
+      await eventBox.put(key, e);
+    }
+
+    p('${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach}'
+        ' HiveUtil: ${events.length} Events have been cached in Hive');
+  }
+  Future<void> addPlaces({required List<CityPlace> places}) async {
+    await _init();
+
+    for (var e in places) {
+      String key = '${e.cityId}-${e.placeId}';
+      await cityPlaceBox.put(key, e);
+    }
+
+    p('${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach}'
+        ' HiveUtil:${places.length} places have been cached in Hive');
+  }
+
 }

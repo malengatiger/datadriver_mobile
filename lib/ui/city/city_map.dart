@@ -1,14 +1,18 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:custom_info_window/custom_info_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:universal_frontend/data_models/city_aggregate.dart';
 import 'package:universal_frontend/data_models/event.dart';
 import 'package:universal_frontend/services/data_service.dart';
 import 'package:universal_frontend/ui/city/city_map_header.dart';
+import 'package:universal_frontend/ui/dashboard/widgets/minutes_ago_widget.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:universal_frontend/utils/providers.dart';
 import 'dart:ui' as ui;
@@ -17,9 +21,9 @@ import '../../data_models/city_place.dart';
 import '../../utils/util.dart';
 
 class CityMap extends StatefulWidget {
-  const CityMap({super.key, required this.cityId});
+  const CityMap({super.key, required this.aggregate});
 
-  final String cityId;
+  final CityAggregate aggregate;
 
   @override
   State<CityMap> createState() => CityMapState();
@@ -28,22 +32,20 @@ class CityMap extends StatefulWidget {
 class CityMapState extends State<CityMap> {
   // final Completer<GoogleMapController> _mapController = Completer();
   late GoogleMapController googleMapController;
+  final CustomInfoWindowController _customInfoWindowController =
+      CustomInfoWindowController();
 
   static const CameraPosition _inTheAtlanticOcean = CameraPosition(
     target: LatLng(0.0, 0.0),
     zoom: 14,
   );
 
-  static const CameraPosition _kLake = CameraPosition(
-      bearing: 192.8334901395799,
-      target: LatLng(37.43296265331129, -122.08832357078792),
-      tilt: 59.440717697143555,
-      zoom: 19.151926040649414);
-
   City? city;
+
   var events = <Event>[];
   var places = <CityPlace>[];
   var placeAggregates = <PlaceAggregate>[];
+
   bool isLoading = false;
   bool _showPlace = false;
   PlaceAggregate? placeAggregate;
@@ -51,6 +53,12 @@ class CityMapState extends State<CityMap> {
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    _customInfoWindowController.dispose();
+    super.dispose();
   }
 
   Future<void> _getData() async {
@@ -62,24 +70,28 @@ class CityMapState extends State<CityMap> {
     await _getPlaces();
     await _getEvents();
 
-    HashMap<String, List<Event>> hash = _buildHashMap();
-    processHashMap(hash);
+    placeAggregates.clear();
+    if (events.isNotEmpty) {
+      HashMap<String, List<Event>> hash = _buildHashMap();
+      _processHashMap(hash);
+    }
+
     setState(() {
       isLoading = false;
     });
-    _putPlaceAggregateMarkersOnMap();
+    _putPlaceMarkersOnMap();
   }
 
   _getCity() async {
-    city = await DataService.getCity(cityId: widget.cityId);
+    city = await DataService.getCity(cityId: widget.aggregate.cityId);
     if (city != null) {
-      p('$diamond $diamond CityMap: Found ${city?.city} on Firestore');
+      p('$diamond $diamond CityMap: Found city: ${city?.city} on Firestore');
     }
   }
 
   _getEvents() async {
     events = await DataService.getCityEvents(
-        cityId: widget.cityId, minutes: minutesAgo);
+        cityId: widget.aggregate.cityId, minutes: minutesAgo);
     p('$diamond $diamond CityMap: Found ${events.length} events on Firestore');
   }
 
@@ -87,7 +99,7 @@ class CityMapState extends State<CityMap> {
   var totalCityRating = 0;
   var averageCityRating = 0.0;
 
-  void processHashMap(HashMap<String, List<Event>> hash) {
+  void _processHashMap(HashMap<String, List<Event>> hash) {
     totalCityAmount = 0.0;
     totalCityRating = 0;
     hash.forEach((key, list) {
@@ -139,34 +151,69 @@ class CityMapState extends State<CityMap> {
   }
 
   _getPlaces() async {
-    places = await DataService.getCityPlaces(cityId: widget.cityId);
+    places = await DataService.getCityPlaces(cityId: widget.aggregate.cityId);
     p('$diamond $diamond CityMap: Found ${places.length} city places on Firestore');
   }
 
-  Future<void> _putPlaceAggregateMarkersOnMap() async {
+  Future<void> _putPlaceMarkersOnMap() async {
     p('$diamond $diamond CityMap: ... putting place aggregate markers on map, '
         'aggregates:: ${placeAggregates.length}');
     final Uint8List markIcon = await getImage(images[2], 100);
     _markers.clear();
-    for (var agg in placeAggregates) {
-      var marker = Marker(
-        markerId: MarkerId(agg.placeId),
-        // icon: BitmapDescriptor.fromBytes(markIcon),
-        position: LatLng(agg.latitude, agg.longitude),
-        infoWindow: InfoWindow(
-            title: agg.name,
-            onTap: () {
-              p('tapped ${agg.name} $redDot $redDot in InfoWindow');
-              _showPlaceAggregate(agg);
-            }),
-      );
-      _markers.add(marker);
+
+    if (placeAggregates.isEmpty) {
+      for (var place in places) {
+        var marker = Marker(
+          markerId: MarkerId(place.placeId!),
+          // icon: BitmapDescriptor.fromBytes(markIcon),
+          position: LatLng(place.geometry!.location!.latitude!, place.geometry!.location!.longitude!),
+
+          infoWindow: InfoWindow(
+              title: place.name,
+              onTap: () {
+                p('tapped ${place.name} $redDot $redDot in InfoWindow');
+                _showPlaceCard(place);
+              }),
+        );
+        _markers.add(marker);
+      }
+      var latLng = LatLng(
+          places.first.geometry!.location!.latitude!, places.first.geometry!.location!.longitude!);
+      googleMapController.animateCamera(CameraUpdate.newLatLngZoom(latLng, 14));
+    } else {
+      for (var agg in placeAggregates) {
+        var marker = Marker(
+          markerId: MarkerId(agg.placeId),
+          // icon: BitmapDescriptor.fromBytes(markIcon),
+          position: LatLng(agg.latitude, agg.longitude),
+
+          infoWindow: InfoWindow(
+              title: agg.name,
+              onTap: () {
+                p('tapped ${agg.name} $redDot $redDot in InfoWindow');
+                _showPlaceAggregate(agg);
+              }),
+        );
+        _markers.add(marker);
+      }
+      var latLng = LatLng(
+          placeAggregates.first.latitude, placeAggregates.first.longitude);
+      googleMapController.animateCamera(CameraUpdate.newLatLngZoom(latLng, 14));
+      p('$diamond $diamond CityMap: ... finished putting place aggregate markers on map');
     }
-    var latLng =
-        LatLng(placeAggregates.first.latitude, placeAggregates.first.longitude);
-    googleMapController.animateCamera(CameraUpdate.newLatLngZoom(latLng, 14));
-    p('$diamond $diamond CityMap: ... finished putting place aggregate markers on map');
     setState(() {});
+  }
+
+  CityPlace? selectedCityPlace;
+  _showPlaceCard(CityPlace place) {
+    p("${Emoji.redDot} Selected place: ${place.name} - ${place.cityName}");
+    placeAggregate = PlaceAggregate(placeId: place.placeId!, name: place.name!,
+        latitude: place.geometry!.location!.latitude!, longitude: place.geometry!.location!.longitude!,
+        totalSpent: 0.0, averageRating: 0.0, events: 0);
+    setState(() {
+      selectedCityPlace = place;
+      _showPlace = true;
+    });
   }
 
   _showPlaceAggregate(PlaceAggregate agg) {
@@ -209,7 +256,6 @@ class CityMapState extends State<CityMap> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.brown[100],
         title: isLoading
             ? const Text(
                 'City Map Loading ...',
@@ -217,90 +263,110 @@ class CityMapState extends State<CityMap> {
               )
             : Text(
                 '${city?.city}, ${city?.adminName}',
-                style: const TextStyle(fontSize: 12, color: Colors.black),
+                style: const TextStyle(
+                  fontSize: 12,
+                ),
               ),
         actions: [
           IconButton(onPressed: _getData, icon: const Icon(Icons.refresh)),
         ],
         bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(20),
+            preferredSize: const Size.fromHeight(60),
             child: Column(
               children: [
-                CityMapHeader(events: events.length,
-                  averageRating: averageCityRating, onRequestRefresh: () {
-                  _getData();
-                  }, totalAmount: totalCityAmount,),
-                const SizedBox(height: 8,),
+                CityMapHeader(
+                  events: widget.aggregate.numberOfEvents,
+                  averageRating: widget.aggregate.averageRating,
+                  onRequestRefresh: () {
+                    _getData();
+                  },
+                  totalAmount: widget.aggregate.totalSpent,
+                ),
+                const SizedBox(
+                  height: 8,
+                ),
+                MinutesAgoWidget(date: DateTime.parse(widget.aggregate.date)),
+                const SizedBox(
+                  height: 16,
+                ),
               ],
             )),
       ),
-      backgroundColor: Colors.brown[100],
-      body:  Stack(
-              children: [
-                GoogleMap(
-                  mapType: MapType.hybrid,
-                  initialCameraPosition: _inTheAtlanticOcean,
-                  markers: Set<Marker>.of(_markers),
-                  buildingsEnabled: true,
-                  compassEnabled: true,
-                  trafficEnabled: true,
-                  mapToolbarEnabled: true,
-                  myLocationEnabled: true,
-                  onMapCreated: (GoogleMapController controller) {
-                    p('${Emoji.brocolli} ${Emoji.brocolli} onMapCreated: map is created and ready for markers!');
-                    googleMapController = controller;
-                    _getData();
-                  },
-                ),
-                isLoading? Positioned(
-                  left: 48, top: 200,
+      // backgroundColor: Colors.brown[100],
+      body: Stack(
+        children: [
+          GoogleMap(
+            mapType: MapType.hybrid,
+            initialCameraPosition: _inTheAtlanticOcean,
+            markers: Set<Marker>.of(_markers),
+            buildingsEnabled: true,
+            compassEnabled: true,
+            trafficEnabled: true,
+            mapToolbarEnabled: true,
+            myLocationEnabled: true,
+            onMapCreated: (GoogleMapController controller) {
+              p('${Emoji.brocolli} ${Emoji.brocolli} onMapCreated: map is created and ready for markers!');
+              googleMapController = controller;
+              _getData();
+            },
+          ),
+          isLoading
+              ? Positioned(
+                  left: 48,
+                  top: 200,
                   child: Center(
                     child: SizedBox(
                       width: 240,
-                      height: 240,
+                      height: 60,
                       child: Card(
                         elevation: 8,
-                        color: Colors.brown[50],
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.0),
+                          borderRadius: BorderRadius.circular(8.0),
                         ),
-                        child: Column(
-                          children: const [
-                            SizedBox(
-                              height: 80,
-                            ),
-                            Text('Loading data ...'),
-                            SizedBox(
-                              height: 24,
-                            ),
-                            SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 8,
-                                backgroundColor: Colors.pink,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              SizedBox(
+                                height: 80,
                               ),
-                            )
-                          ],
+                              Text('Loading data ...'),
+                              SizedBox(
+                                width: 24,
+                              ),
+                              SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 8,
+                                  backgroundColor: Colors.pink,
+                                ),
+                              )
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ): const SizedBox(height: 0,),
-                _showPlace
-                    ? Positioned(
-                        right: 8,
-                        top: 16,
-                        child: PlaceCard(
-                            aggregate: placeAggregate!,
-                            onClose: () {
-                              _closePlaceAggregate();
-                            }))
-                    : const SizedBox(
-                        height: 0,
-                      ),
-              ],
-            ),
+                )
+              : const SizedBox(
+                  height: 0,
+                ),
+          _showPlace
+              ? Positioned(
+                  right: 8,
+                  top: 8,
+                  child: PlaceCard(
+                      aggregate: placeAggregate!,
+                      onClose: () {
+                        _closePlaceAggregate();
+                      }))
+              : const SizedBox(
+                  height: 0,
+                ),
+        ],
+      ),
     );
   }
 }
@@ -336,11 +402,11 @@ class PlaceCard extends StatelessWidget {
     var numberFormat = NumberFormat.compact();
 
     return SizedBox(
-      width: 300,
-      height: 280,
+      width: 260,
+      height: 220,
       child: Card(
         elevation: 16,
-        color: Colors.brown[100],
+        color: Colors.black38,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24.0),
         ),
@@ -362,48 +428,61 @@ class PlaceCard extends StatelessWidget {
               Text(
                 aggregate.name,
                 style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
               const SizedBox(
                 height: 16,
               ),
               Row(
                 children: [
-                  const SizedBox(width: 120, child: Text('Events:')),
+                   SizedBox(width: 80, child: Text('Events:',style: GoogleFonts.lato(
+                      textStyle: Theme.of(context).textTheme.bodySmall,
+                      fontWeight: FontWeight.normal,
+                      fontSize: 12),)),
                   Text(
                     '${aggregate.events}',
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
+                        fontSize: 16, fontWeight: FontWeight.w900),
                   ),
                 ],
               ),
               const SizedBox(
-                height: 4,
+                height: 8,
               ),
               Row(
                 children: [
-                  const SizedBox(width: 120, child: Text('Average Rating:')),
+                  SizedBox(
+                      width: 80,
+                      child: Text(
+                        'Rating:',
+                        style: GoogleFonts.lato(
+                            textStyle: Theme.of(context).textTheme.bodySmall,
+                            fontWeight: FontWeight.normal,
+                            fontSize: 12),
+                      ),
+                  ),
                   Text(
                     aggregate.averageRating.toStringAsFixed(2),
-                    style: TextStyle(
-                        color: aggregate.averageRating < 3.0
-                            ? Colors.pink[700]
-                            : Colors.black,
+                    style: const TextStyle(
+
                         fontSize: 16,
                         fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
               const SizedBox(
-                height: 24,
+                height: 8,
               ),
               Row(
                 children: [
-                  const SizedBox(width: 80, child: Text('Amount:')),
+                   SizedBox(width: 80, child: Text('Amount:', style: GoogleFonts.lato(
+                      textStyle: Theme.of(context).textTheme.bodySmall,
+                      fontWeight: FontWeight.normal,
+                      fontSize: 12),)),
                   Text(
                     numberFormat.format(aggregate.totalSpent),
                     style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w900),
+                        fontSize: 18, fontWeight: FontWeight.w900),
                   ),
                 ],
               ),

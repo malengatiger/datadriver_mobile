@@ -1,5 +1,12 @@
+import 'package:hive/hive.dart';
+
+part 'location.g.dart';
+
+@HiveType(typeId: 9)
 class Location {
+  @HiveField(0)
   double? latitude;
+  @HiveField(1)
   double? longitude;
 
   Location({
