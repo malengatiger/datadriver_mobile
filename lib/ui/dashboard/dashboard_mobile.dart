@@ -75,7 +75,7 @@ class DashboardMobileState extends State<DashboardMobile>
   var cityHashMap = HashMap<String, String>();
   var totalGenerated = 0;
   bool showGenerator = false;
-  DateTime? dashDate;
+  DateTime? dashboardCreatedDate;
 
 
   void _processTimerMessage(TimerMessage message) {
@@ -115,9 +115,8 @@ class DashboardMobileState extends State<DashboardMobile>
       p('${Emoji.brocolli} ... getting DashboardData from hive');
       dashData = await hiveUtil.getLastDashboardData();
       if (dashData != null) {
-
         setState(() {
-          dashDate = DateTime.parse(dashData!.date);
+          dashboardCreatedDate = DateTime.parse(dashData!.date);
           isLoading = false;
         });
         _getDashboardDataQuietly();
@@ -156,11 +155,11 @@ class DashboardMobileState extends State<DashboardMobile>
 
       dashData = await apiService.getDashboardData(minutesAgo: minutesAgo);
       dashData!.date = DateTime.now().toIso8601String();
-      dashDate = DateTime.parse(dashData!.date);
+      dashboardCreatedDate = DateTime.parse(dashData!.date);
       await hiveUtil.addDashboardData(data: dashData!);
       setState(() {
         isLoading = false;
-        dashDate = DateTime.parse(dashData!.date).toLocal();
+        dashboardCreatedDate = DateTime.parse(dashData!.date).toLocal();
       });
       _animationController.forward();
     } catch (e) {
@@ -189,16 +188,16 @@ class DashboardMobileState extends State<DashboardMobile>
     p('$redDot $redDot ... getting dashboard data QUIETLY .............');
 
     setState(() {
-      isGenerating = true;
+      showGenerator = true;
     });
     try {
       p('${Emoji.brocolli} ... getting DashboardData from remote');
       dashData = await apiService.getDashboardData(minutesAgo: minutesAgo);
       dashData!.date = DateTime.now().toIso8601String();
-      dashDate = DateTime.parse(dashData!.date);
+      dashboardCreatedDate = DateTime.parse(dashData!.date);
       await hiveUtil.addDashboardData(data: dashData!);
       setState(() {
-        isGenerating = false;
+        showGenerator = false;
       });
       _animationController.forward();
     } catch (e) {
@@ -239,7 +238,7 @@ class DashboardMobileState extends State<DashboardMobile>
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       MinutesAgoWidget(
-                        date: dashDate == null? DateTime.now(): dashDate!,
+                        date: dashboardCreatedDate == null? DateTime.now(): dashboardCreatedDate!,
                       ),
                       const SizedBox(
                         width: 24,
@@ -282,7 +281,7 @@ class DashboardMobileState extends State<DashboardMobile>
             ),
             IconButton(
                 onPressed: () {
-                  _getDashboardData();
+                  _getDashboardDataQuietly();
                 },
                 icon: const Icon(
                   Icons.refresh,

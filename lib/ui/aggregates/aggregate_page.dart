@@ -54,7 +54,7 @@ class AggregatePageState extends State<AggregatePage>
     p('.... initState inside AggregatePage $redDot');
     _getLocalData();
   }
-
+  CityAggregate? firstAggregate;
   void _getLocalData() async {
     p('${Emoji.brocolli} ... getting aggregates from hive cache ...');
     setState(() {
@@ -71,6 +71,8 @@ class AggregatePageState extends State<AggregatePage>
       if (aggregates.isEmpty) {
         _getAggregates();
         return;
+      } else {
+        firstAggregate = aggregates.first;
       }
       _animationController.forward();
       _getDataQuietly();
@@ -87,8 +89,10 @@ class AggregatePageState extends State<AggregatePage>
   Future<void> _getDataQuietly() async {
     // _animationController.reverse();
     p('_getDataQuietly starting ... refreshing aggregates ${Emoji.blueDot}');
+    firstAggregate = null;
     aggregates = await apiService.getCityAggregates(minutes: minutesAgo);
     if (aggregates.isNotEmpty) {
+      firstAggregate = aggregates.first;
       hiveUtil.addAggregates(aggregates: aggregates);
     }
     if (mounted) {
@@ -103,8 +107,10 @@ class AggregatePageState extends State<AggregatePage>
       isLoading = true;
     });
     _animationController.reverse();
+    firstAggregate = null;
     aggregates = await apiService.getCityAggregates(minutes: minutesAgo);
     if (aggregates.isNotEmpty) {
+      firstAggregate = aggregates.first;
       await hiveUtil.addAggregates(aggregates: aggregates);
     }
     if (mounted) {
@@ -308,14 +314,15 @@ class AggregatePageState extends State<AggregatePage>
                         ),
                       ),
                       const SizedBox(
-                        height: 12,
+                        height: 16,
                       ),
                       InkWell(
                         onTap: _getAggregates,
-                        child:  MinutesAgoWidget(date: DateTime.now(),),
+                        child:  MinutesAgoWidget(date: firstAggregate == null? DateTime.now() :
+                        DateTime.parse(firstAggregate!.date).toLocal()),
                       ),
                       const SizedBox(
-                        height: 12,
+                        height: 8,
                       ),
                     ],
                   )),
@@ -389,7 +396,8 @@ class AggregatePageState extends State<AggregatePage>
                           kIsWeb //todo check!!!
                               ?  SizedBox(
                                   height: 80,
-                                  child: MinutesAgoWidget(date: DateTime.now(),),
+                                  child: MinutesAgoWidget(date: firstAggregate == null? DateTime.now() :
+                                  DateTime.parse(firstAggregate!.date).toLocal(),),
                                 )
                               :  SizedBox(
                                   height: 24,

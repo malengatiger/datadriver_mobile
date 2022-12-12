@@ -26,8 +26,9 @@ class AggregatesMap extends StatefulWidget {
 }
 
 class AggregatesMapState extends State<AggregatesMap>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
+  late AnimationController _topAnimationController;
   // final Completer<GoogleMapController> _mapController = Completer();
   GoogleMapController? googleMapController;
 
@@ -37,20 +38,28 @@ class AggregatesMapState extends State<AggregatesMap>
   );
 
   bool isLoading = false;
+  late CityAggregate firstAggregate;
 
   @override
   void initState() {
     _animationController = AnimationController(
         value: 0.0,
         duration: const Duration(milliseconds: 2000),
-        reverseDuration: const Duration(milliseconds: 500),
+        reverseDuration: const Duration(milliseconds: 2000),
+        vsync: this);
+    _topAnimationController = AnimationController(
+        value: 0.0,
+        duration: const Duration(milliseconds: 2000),
+        reverseDuration: const Duration(milliseconds: 2000),
         vsync: this);
     super.initState();
+    firstAggregate = widget.aggregates.first;
     _calculate();
   }
   @override
   void dispose() {
     _animationController.stop(canceled: true);
+    _topAnimationController.stop(canceled: true);
     super.dispose();
 
   }
@@ -68,6 +77,7 @@ class AggregatesMapState extends State<AggregatesMap>
     }
     averageCityRating = totalCityRating / widget.aggregates.length;
     setState(() {});
+    _topAnimationController.forward();
   }
 
   Future<void> _putAggregateMarkersOnMap() async {
@@ -104,19 +114,26 @@ class AggregatesMapState extends State<AggregatesMap>
   bool _showCityAggregate = false;
   CityAggregate? aggregate;
 
-  _showCityAggregateCard(CityAggregate c) {
+  _showCityAggregateCard(CityAggregate c) async {
     aggregate = c;
+    _animationController.reset();
     setState(() {
       _showCityAggregate = true;
     });
     _animationController.forward();
+
   }
 
   _closeCityAggregateCard() {
-    setState(() {
-      _showCityAggregate = false;
+
+    _animationController.reverse().then((value) {
+      setState(() {
+        _showCityAggregate = false;
+      });
     });
-    _animationController.reverse();
+
+
+
   }
 
   Future<Uint8List> getImage(String path, int width) async {
@@ -157,20 +174,20 @@ class AggregatesMapState extends State<AggregatesMap>
                     fontSize: 12, color: Theme.of(context).primaryColor),
               ),
         bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(120),
+            preferredSize: const Size.fromHeight(80),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              padding: const EdgeInsets.all(4.0),
               child: Column(
                 children: [
-                  AnimatedBuilder(animation: _animationController,
+                  AnimatedBuilder(animation: _topAnimationController,
                       builder: (context, child){
                         return FadeScaleTransition(
-                            animation: _animationController,
+                            animation: _topAnimationController,
                             child: child);
 
                       },
                     child: Card(
-                      elevation: 8,
+                      elevation: 2,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16.0)),
                       child: Padding(
@@ -185,53 +202,46 @@ class AggregatesMapState extends State<AggregatesMap>
                                   style: TextStyle(fontSize: 10),
                                 ),
                                 const SizedBox(
-                                  width: 4,
+                                  width: 2,
                                 ),
                                 Text(numberFormat.format(totalEvents),
                                     style:
                                     const TextStyle(fontWeight: FontWeight.bold)),
                                 const SizedBox(
-                                  width: 16,
+                                  width: 8,
                                 ),
                                 const Text(
                                   'Rating',
                                   style: TextStyle(fontSize: 10),
                                 ),
                                 const SizedBox(
-                                  width: 4,
+                                  width: 2,
                                 ),
                                 Text(averageCityRating.toStringAsFixed(2),
                                     style:
                                     const TextStyle(fontWeight: FontWeight.bold)),
                                 const SizedBox(
-                                  width: 16,
+                                  width: 8,
                                 ),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 12,
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
                                 const Text(
                                   'Amount',
                                   style: TextStyle(fontSize: 10),
                                 ),
                                 const SizedBox(
-                                  width: 4,
+                                  width: 2,
                                 ),
                                 Text(numberFormat.format(totalCityAmount),
                                     style: const TextStyle(
-                                        fontSize: 16, fontWeight: FontWeight.w900))
+                                        fontWeight: FontWeight.w900))
                               ],
                             ),
                             const SizedBox(
-                              height: 24,
+                              height: 16,
                             ),
-                             MinutesAgoWidget(date: DateTime.now(),),
+
+                             MinutesAgoWidget(date: DateTime.parse(firstAggregate.date).toLocal()),
                             const SizedBox(
-                              height: 12,
+                              height: 8,
                             ),
                           ],
                         ),

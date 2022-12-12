@@ -10,13 +10,21 @@ class MinutesAgoWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var day = date.day;
+    var month = date.month;
+    var year = date.year;
     var hour = date.hour;
     var minute = date.minute;
-    var min = '';
+    var min = '', hr = '';
     if (minute < 10) {
       min = '0$minute';
     } else {
       min = minute.toString();
+    }
+    if (hour < 10) {
+      hr = '0$hour';
+    } else {
+      hr = hour.toString();
     }
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -30,10 +38,10 @@ class MinutesAgoWidget extends StatelessWidget {
         ),
 
         Text(
-          '$hour:$min',
+          '$year/$month/$day - $hr:$min',
           style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
