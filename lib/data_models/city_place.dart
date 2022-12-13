@@ -1,8 +1,6 @@
 import 'package:hive/hive.dart';
-import 'package:universal_frontend/data_models/location.dart';
 import '../utils/emojis.dart';
 import '../utils/util.dart';
-import 'geometry.dart';
 import 'geometry.dart';
 import 'photo.dart';
 part 'city_place.g.dart';

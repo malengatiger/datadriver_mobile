@@ -105,7 +105,7 @@ class AggregatesMapState extends State<AggregatesMap>
     }
     var latLng = LatLng(
         widget.aggregates.first.latitude, widget.aggregates.first.longitude);
-    googleMapController!.animateCamera(CameraUpdate.newLatLngZoom(latLng, 6));
+    googleMapController!.animateCamera(CameraUpdate.newLatLngZoom(latLng, 5));
     p('$diamond $diamond AggregatesMap: ... finished putting agg markers on map');
     setState(() {});
     _animationController.forward();

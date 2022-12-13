@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:animations/animations.dart';
 import 'package:custom_info_window/custom_info_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -29,11 +30,12 @@ class CityMap extends StatefulWidget {
   State<CityMap> createState() => CityMapState();
 }
 
-class CityMapState extends State<CityMap> {
+class CityMapState extends State<CityMap> with SingleTickerProviderStateMixin {
   // final Completer<GoogleMapController> _mapController = Completer();
   late GoogleMapController googleMapController;
   final CustomInfoWindowController _customInfoWindowController =
       CustomInfoWindowController();
+  late AnimationController _animationController;
 
   static const CameraPosition _inTheAtlanticOcean = CameraPosition(
     target: LatLng(0.0, 0.0),
@@ -52,6 +54,18 @@ class CityMapState extends State<CityMap> {
 
   @override
   void initState() {
+    _animationController = AnimationController(
+      value: 0.0,
+      duration: const Duration(milliseconds: 3000),
+      reverseDuration: const Duration(milliseconds: 2000),
+      vsync: this,
+    )..addStatusListener((AnimationStatus status) {
+        setState(() {
+          // setState needs to be called to trigger a rebuild because
+          // the 'HIDE FAB'/'SHOW FAB' button needs to be updated based
+          // the latest value of [_controller.status].
+        });
+      });
     super.initState();
   }
 
@@ -75,6 +89,8 @@ class CityMapState extends State<CityMap> {
       HashMap<String, List<Event>> hash = _buildHashMap();
       _processHashMap(hash);
     }
+    p('${Emoji.redDot}${Emoji.redDot}${Emoji.redDot}${Emoji.redDot}'
+        ' PlaceAggregates calculated: ${placeAggregates.length}');
 
     setState(() {
       isLoading = false;
@@ -90,9 +106,11 @@ class CityMapState extends State<CityMap> {
   }
 
   _getEvents() async {
+    p('...... getting cityEvents via DataService ... cityId: ${widget.aggregate.cityId} ${Emoji.brocolli}');
     events = await DataService.getCityEvents(
         cityId: widget.aggregate.cityId, minutes: minutesAgo);
     p('$diamond $diamond CityMap: Found ${events.length} events on Firestore');
+
   }
 
   var totalCityAmount = 0.0;
@@ -131,6 +149,7 @@ class CityMapState extends State<CityMap> {
 
     averageCityRating =
         double.parse('$totalCityRating') / double.parse('${events.length}');
+
   }
 
   HashMap<String, List<Event>> _buildHashMap() {
@@ -166,7 +185,8 @@ class CityMapState extends State<CityMap> {
         var marker = Marker(
           markerId: MarkerId(place.placeId!),
           // icon: BitmapDescriptor.fromBytes(markIcon),
-          position: LatLng(place.geometry!.location!.latitude!, place.geometry!.location!.longitude!),
+          position: LatLng(place.geometry!.location!.latitude!,
+              place.geometry!.location!.longitude!),
 
           infoWindow: InfoWindow(
               title: place.name,
@@ -177,24 +197,26 @@ class CityMapState extends State<CityMap> {
         );
         _markers.add(marker);
       }
-      var latLng = LatLng(
-          places.first.geometry!.location!.latitude!, places.first.geometry!.location!.longitude!);
+      var latLng = LatLng(places.first.geometry!.location!.latitude!,
+          places.first.geometry!.location!.longitude!);
       googleMapController.animateCamera(CameraUpdate.newLatLngZoom(latLng, 14));
     } else {
       for (var agg in placeAggregates) {
-        var marker = Marker(
-          markerId: MarkerId(agg.placeId),
-          // icon: BitmapDescriptor.fromBytes(markIcon),
-          position: LatLng(agg.latitude, agg.longitude),
+        if (agg.events > 0) {
+          var marker = Marker(
+            markerId: MarkerId(agg.placeId),
+            // icon: BitmapDescriptor.fromBytes(markIcon),
+            position: LatLng(agg.latitude, agg.longitude),
 
-          infoWindow: InfoWindow(
-              title: agg.name,
-              onTap: () {
-                p('tapped ${agg.name} $redDot $redDot in InfoWindow');
-                _showPlaceAggregate(agg);
-              }),
-        );
-        _markers.add(marker);
+            infoWindow: InfoWindow(
+                title: agg.name,
+                onTap: () {
+                  p('tapped ${agg.name} $redDot $redDot in InfoWindow');
+                  _showPlaceAggregate(agg);
+                }),
+          );
+          _markers.add(marker);
+        }
       }
       var latLng = LatLng(
           placeAggregates.first.latitude, placeAggregates.first.longitude);
@@ -207,27 +229,44 @@ class CityMapState extends State<CityMap> {
   CityPlace? selectedCityPlace;
   _showPlaceCard(CityPlace place) {
     p("${Emoji.redDot} Selected place: ${place.name} - ${place.cityName}");
-    placeAggregate = PlaceAggregate(placeId: place.placeId!, name: place.name!,
-        latitude: place.geometry!.location!.latitude!, longitude: place.geometry!.location!.longitude!,
-        totalSpent: 0.0, averageRating: 0.0, events: 0);
+    _animationController.reset();
     setState(() {
       selectedCityPlace = place;
       _showPlace = true;
     });
+    _animationController.forward();
   }
 
+  bool _showAgg = false;
+
   _showPlaceAggregate(PlaceAggregate agg) {
+    _animationController.reset();
     setState(() {
       placeAggregate = agg;
-      _showPlace = true;
+      _showAgg = true;
     });
+    _animationController.forward();
   }
 
   _closePlaceAggregate() {
-    setState(() {
-      placeAggregate = null;
-      _showPlace = false;
+    _animationController.reverse().then((value)  {
+      setState(() {
+        placeAggregate = null;
+        _showAgg = false;
+      });
     });
+
+
+  }
+
+  _closePlaceCard() {
+    _animationController.reverse().then((value) {
+      setState(() {
+        selectedCityPlace = null;
+        _showPlace = false;
+      });
+    });
+
   }
 
   Future<Uint8List> getImage(String path, int width) async {
@@ -357,11 +396,41 @@ class CityMapState extends State<CityMap> {
               ? Positioned(
                   right: 8,
                   top: 8,
-                  child: PlaceCard(
+                  child: AnimatedBuilder(
+                    animation: _animationController,
+                    builder: (BuildContext context, Widget? child) {
+                      return FadeScaleTransition(
+                        animation: _animationController,
+                        child: child,
+                      );
+                    },
+                    child: PlaceCard(
+                        place: selectedCityPlace!,
+                        onClose: () {
+                          _closePlaceCard();
+                        }),
+                  ))
+              : const SizedBox(
+                  height: 0,
+                ),
+          _showAgg
+              ? Positioned(
+                  right: 8,
+                  top: 8,
+                  child: AnimatedBuilder(
+                    animation: _animationController,
+                    builder: (BuildContext context, Widget? child) {
+                      return FadeScaleTransition(
+                        animation: _animationController,
+                        child: child,
+                      );
+                    },
+                    child: PlaceAggregateCard(
                       aggregate: placeAggregate!,
-                      onClose: () {
-                        _closePlaceAggregate();
-                      }))
+                      onClose: _closePlaceAggregate,
+                    ),
+                  ),
+                )
               : const SizedBox(
                   height: 0,
                 ),
@@ -388,8 +457,9 @@ class PlaceAggregate {
       required this.events});
 }
 
-class PlaceCard extends StatelessWidget {
-  const PlaceCard({Key? key, required this.aggregate, required this.onClose})
+class PlaceAggregateCard extends StatelessWidget {
+  const PlaceAggregateCard(
+      {Key? key, required this.aggregate, required this.onClose})
       : super(key: key);
   final PlaceAggregate aggregate;
   final Function onClose;
@@ -435,10 +505,15 @@ class PlaceCard extends StatelessWidget {
               ),
               Row(
                 children: [
-                   SizedBox(width: 80, child: Text('Events:',style: GoogleFonts.lato(
-                      textStyle: Theme.of(context).textTheme.bodySmall,
-                      fontWeight: FontWeight.normal,
-                      fontSize: 12),)),
+                  SizedBox(
+                      width: 80,
+                      child: Text(
+                        'Events:',
+                        style: GoogleFonts.lato(
+                            textStyle: Theme.of(context).textTheme.bodySmall,
+                            fontWeight: FontWeight.normal,
+                            fontSize: 12),
+                      )),
                   Text(
                     '${aggregate.events}',
                     style: const TextStyle(
@@ -452,21 +527,19 @@ class PlaceCard extends StatelessWidget {
               Row(
                 children: [
                   SizedBox(
-                      width: 80,
-                      child: Text(
-                        'Rating:',
-                        style: GoogleFonts.lato(
-                            textStyle: Theme.of(context).textTheme.bodySmall,
-                            fontWeight: FontWeight.normal,
-                            fontSize: 12),
-                      ),
+                    width: 80,
+                    child: Text(
+                      'Rating:',
+                      style: GoogleFonts.lato(
+                          textStyle: Theme.of(context).textTheme.bodySmall,
+                          fontWeight: FontWeight.normal,
+                          fontSize: 12),
+                    ),
                   ),
                   Text(
                     aggregate.averageRating.toStringAsFixed(2),
                     style: const TextStyle(
-
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold),
+                        fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -475,16 +548,117 @@ class PlaceCard extends StatelessWidget {
               ),
               Row(
                 children: [
-                   SizedBox(width: 80, child: Text('Amount:', style: GoogleFonts.lato(
-                      textStyle: Theme.of(context).textTheme.bodySmall,
-                      fontWeight: FontWeight.normal,
-                      fontSize: 12),)),
+                  SizedBox(
+                      width: 80,
+                      child: Text(
+                        'Amount:',
+                        style: GoogleFonts.lato(
+                            textStyle: Theme.of(context).textTheme.bodySmall,
+                            fontWeight: FontWeight.normal,
+                            fontSize: 12),
+                      )),
                   Text(
                     numberFormat.format(aggregate.totalSpent),
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.w900),
                   ),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PlaceCard extends StatelessWidget {
+  const PlaceCard({Key? key, required this.place, required this.onClose})
+      : super(key: key);
+  final CityPlace place;
+  final Function onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    // var currencyFormat =
+    //     NumberFormat.compactCurrency(locale: Platform.localeName)
+    //         .currencySymbol;
+    var numberFormat = NumberFormat.compact();
+
+    return SizedBox(
+      width: 260,
+      height: 160,
+      child: Card(
+        elevation: 16,
+        color: Colors.black38,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24.0),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                      onPressed: () {
+                        onClose();
+                      },
+                      icon: const Icon(Icons.close)),
+                  const SizedBox(width: 0),
+                ],
+              ),
+              Text(
+                place.name!,
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(
+                height: 16,
+              ),
+              Row(
+                children: [
+                  SizedBox(
+                      width: 80,
+                      child: Text(
+                        'Vicinity:',
+                        style: GoogleFonts.lato(
+                            textStyle: Theme.of(context).textTheme.bodySmall,
+                            fontWeight: FontWeight.normal,
+                            fontSize: 12),
+                      )),
+                  Text(
+                    '${place.vicinity}',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+              const SizedBox(
+                height: 8,
+              ),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      'Province:',
+                      style: GoogleFonts.lato(
+                          textStyle: Theme.of(context).textTheme.bodySmall,
+                          fontWeight: FontWeight.normal,
+                          fontSize: 12),
+                    ),
+                  ),
+                  Text(
+                    place.province!,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(
+                height: 8,
               ),
             ],
           ),

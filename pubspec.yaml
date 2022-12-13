@@ -76,6 +76,7 @@ dependencies:
 #  hive_flutter: ^0.3.0+2
   path_provider: ^2.0.11
   custom_info_window: ^1.0.1
+  at_gauges: ^1.0.1
 
 
 

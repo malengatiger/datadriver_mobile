@@ -44,6 +44,13 @@
             </list>
           </value>
         </entry>
+        <entry key="at_gauges">
+          <value>
+            <list>
+              <option value="$PROJECT_DIR$/../flutter/.pub-cache/hosted/pub.dartlang.org/at_gauges-1.0.1/lib" />
+            </list>
+          </value>
+        </entry>
         <entry key="badges">
           <value>
             <list>
@@ -1096,6 +1103,7 @@
       <root url="file://$PROJECT_DIR$/../flutter/.pub-cache/hosted/pub.dartlang.org/animations-2.0.7/lib" />
       <root url="file://$PROJECT_DIR$/../flutter/.pub-cache/hosted/pub.dartlang.org/args-2.3.1/lib" />
       <root url="file://$PROJECT_DIR$/../flutter/.pub-cache/hosted/pub.dartlang.org/async-2.9.0/lib" />
+      <root url="file://$PROJECT_DIR$/../flutter/.pub-cache/hosted/pub.dartlang.org/at_gauges-1.0.1/lib" />
       <root url="file://$PROJECT_DIR$/../flutter/.pub-cache/hosted/pub.dartlang.org/badges-2.0.3/lib" />
       <root url="file://$PROJECT_DIR$/../flutter/.pub-cache/hosted/pub.dartlang.org/boolean_selector-2.1.0/lib" />
       <root url="file://$PROJECT_DIR$/../flutter/.pub-cache/hosted/pub.dartlang.org/build-2.3.1/lib" />

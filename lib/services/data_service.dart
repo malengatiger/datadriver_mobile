@@ -121,7 +121,7 @@ class DataService {
     var list = <Event>[];
     var date = DateTime.now().subtract(Duration(minutes: minutes));
     var data =
-    await db.collection("flatEvents")
+    await db.collection("events")
         .where("longDate", isGreaterThanOrEqualTo: date.millisecondsSinceEpoch)
         .get();
     for (var doc in data.docs) {
@@ -142,7 +142,7 @@ class DataService {
     var list = <Event>[];
     var date = DateTime.now().subtract(Duration(minutes: minutes));
     var data =
-    await db.collection("flatEvents")
+    await db.collection("events")
         .where('cityId', isEqualTo: cityId)
         .where("longDate", isGreaterThanOrEqualTo: date.millisecondsSinceEpoch)
         .orderBy('longDate', descending: true)

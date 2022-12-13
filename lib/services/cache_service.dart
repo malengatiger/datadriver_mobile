@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:isolate';
 
+import 'package:intl/intl.dart';
 import 'package:universal_frontend/data_models/city_place.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:http/http.dart' as http;
@@ -14,9 +15,10 @@ final CacheService cacheService = CacheService._instance;
 class CacheParameters {
   late SendPort sendPort;
   late String url;
-  late String? cityId;
+  late City? city;
+  late int daysAgo = 3;
 
-  CacheParameters({required this.sendPort, required this.url, this.cityId});
+  CacheParameters({required this.sendPort, required this.url, this.city, required this.daysAgo});
 }
 
 class CacheMessage {
@@ -91,6 +93,10 @@ class CacheService {
         ' CacheService: .......... preparing remote data for storing in local hive cache ...');
     start = DateTime.now().millisecondsSinceEpoch;
     var url = params.url;
+    if (params.city != null) {
+        _cacheOneCity(params: params);
+        return;
+    }
     //cache cities
     await _cacheCities(url: url);
     _processMessage(mStart: start, message: 'cities');
@@ -106,7 +112,7 @@ class CacheService {
 
         //cache events ...
         mStart = DateTime.now().millisecondsSinceEpoch;
-        await _cacheEvents(cityId: city.id!, cityName: city.city!, url: url);
+        await _cacheEvents(cityId: city.id!, cityName: city.city!, url: url, daysAgo: params.daysAgo);
         _processMessage(mStart: mStart, message: '🥬${city.city} events');
       }
     } else {
@@ -137,45 +143,76 @@ class CacheService {
     p('${Emoji.leaf} CacheService: Main caching took $secs seconds to complete! ${Emoji.redDot}${Emoji.redDot}');
   }
 
-  void cacheOneCity({required CacheParameters params}) async {
+  final numberFormat = NumberFormat.compact();
+
+  void _cacheOneCity({required CacheParameters params}) async {
     sendPort = params.sendPort;
     p('\n\n${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen}'
         ' CacheService: cacheOneCity .......... preparing remote data for storing in local hive cache ...');
     var mStart = DateTime.now().millisecondsSinceEpoch;
-    places = await _getCityPlaces(cityId: params.cityId!, url: params.url);
+    start = DateTime.now().millisecondsSinceEpoch;
+    places = await _getCityPlaces(cityId: params.city!.id!, url: params.url);
     var mEnd = DateTime.now().millisecondsSinceEpoch;
     double elapsed = (mEnd - mStart) / 1000;
     String jsonTags = jsonEncode(places);
     var msg = CacheMessage(
-        message: 'places cached',
+        message: '${params.city!.city!} ${places.length} places cached',
         statusCode: STATUS_BUSY,
         places: jsonTags,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
         type: TYPE_PLACE);
 
-    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${places.length} places via sendPort: ${params.cityId}\n');
+    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${places.length} places via sendPort: ${params.city}\n');
+    sendPort.send(msg.toJson());
+    msg = CacheMessage(
+        message: '💙${params.city!.city!} ${numberFormat.format(places.length)} places',
+        statusCode: STATUS_BUSY,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: TYPE_MESSAGE);
     sendPort.send(msg.toJson());
     //events
     mStart = DateTime.now().millisecondsSinceEpoch;
     var events = await _getCityEvents(
-        cityId: params.cityId!,
-        minutes: (24 * 60 * 2),
+        cityId: params.city!.id!,
+        minutes: (24 * 60 * params.daysAgo),
         url: params.url); //3 days worth of events
     mEnd = DateTime.now().millisecondsSinceEpoch;
     elapsed = (mEnd - mStart) / 1000;
     jsonTags = jsonEncode(events);
+    //send events
     msg = CacheMessage(
-        message: '${params.cityId!} events cached',
+        message: '💙${params.city!.city!} ${events.length} events',
         statusCode: STATUS_BUSY,
         events: jsonTags,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
         type: TYPE_EVENT);
 
-    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${events.length} events via sendPort: ${params.cityId}\n');
+    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${events.length} events via sendPort: ${params.city}\n');
     sendPort.send(msg.toJson());
+    //send events message
+    msg = CacheMessage(
+        message: '💙${params.city!.city!} ${numberFormat.format(events.length)} events',
+        statusCode: STATUS_BUSY,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: TYPE_MESSAGE);
 
+    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning caching DONE message via sendPort: ${params.city}\n');
+    sendPort.send(msg.toJson());
+    //send DONE message
+    elapsed = (mEnd - start) / 1000;
+    msg = CacheMessage(
+        message: '🍎${params.city!.city!} completed!',
+        statusCode: STATUS_DONE,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: TYPE_MESSAGE);
+
+    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning caching DONE message via sendPort: ${params.city}\n');
+    sendPort.send(msg.toJson());
 
   }
 
@@ -234,12 +271,12 @@ class CacheService {
   Future<void> _cacheEvents(
       {required String cityId,
       required String cityName,
-      required String url}) async {
+      required String url, required int daysAgo}) async {
     var mStart = DateTime.now().millisecondsSinceEpoch;
     var events = await _getCityEvents(
         cityId: cityId,
-        minutes: (24 * 60 * 3),
-        url: url); //3 days worth of events
+        minutes: (24 * 60 * daysAgo),   //3 days worth of events
+        url: url);
     var mEnd = DateTime.now().millisecondsSinceEpoch;
     double elapsed = (mEnd - mStart) / 1000;
     String jsonTags = jsonEncode(events);
@@ -349,7 +386,7 @@ class CacheService {
       p("$heartOrange HTTP Url: $fullUrl");
       var response = await client
           .get(Uri.parse(fullUrl))
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 90));
       p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode}');
       var end = DateTime.now().millisecondsSinceEpoch;

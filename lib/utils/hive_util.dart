@@ -35,21 +35,21 @@ class HiveUtil {
     // initialization logic
   }
 
-  late final BoxCollection boxCollection;
-  late CollectionBox<AggregateBag> aggregateBox;
-  late CollectionBox<DashboardData> dashboardDataBox;
-  late CollectionBox<Event> eventBox;
-  late CollectionBox<City> cityBox;
-  late CollectionBox<CityPlace> cityPlaceBox;
-  bool isInitialized = false;
+  late final BoxCollection _boxCollection;
+  late CollectionBox<AggregateBag> _aggregateBox;
+  late CollectionBox<DashboardData> _dashboardDataBox;
+  late CollectionBox<Event> _eventBox;
+  late CollectionBox<City> _cityBox;
+  late CollectionBox<CityPlace> _cityPlaceBox;
+  bool _isInitialized = false;
 
   _init() async {
-    if (!isInitialized) {
+    if (!_isInitialized) {
       p('${Emoji.peach}${Emoji.peach}${Emoji.peach} Creating a Hive box collection');
       var appDir = await getApplicationDocumentsDirectory();
       File file = File('${appDir.path}/db.file');
 
-      boxCollection = await BoxCollection.open(
+      _boxCollection = await BoxCollection.open(
         'MyGreatBox', // Name of your database
         {'events', 'aggregateBags', 'dashboardData', 'cities', 'cityPlaces'}, // Names of your boxes
         path: file
@@ -69,15 +69,15 @@ class HiveUtil {
       p('${Emoji.peach}${Emoji.peach}${Emoji.peach} Hive box collection created');
 
       // Open your boxes. Optional: Give it a type.
-      aggregateBox =
-          await boxCollection.openBox<AggregateBag>('aggregateBags');
-      dashboardDataBox =
-          await boxCollection.openBox<DashboardData>('dashboardData');
-      eventBox = await boxCollection.openBox<Event>('events');
-      cityBox = await boxCollection.openBox<City>('cities');
-      cityPlaceBox = await boxCollection.openBox<CityPlace>('cityPlaces');
+      _aggregateBox =
+          await _boxCollection.openBox<AggregateBag>('aggregateBags');
+      _dashboardDataBox =
+          await _boxCollection.openBox<DashboardData>('dashboardData');
+      _eventBox = await _boxCollection.openBox<Event>('events');
+      _cityBox = await _boxCollection.openBox<City>('cities');
+      _cityPlaceBox = await _boxCollection.openBox<CityPlace>('cityPlaces');
 
-      isInitialized = true;
+      _isInitialized = true;
       p('${Emoji.peach} ${Emoji.peach} Hive has been initialized and boxes opened');
     }
   }
@@ -91,18 +91,18 @@ class HiveUtil {
     await _init();
     DateTime dt = DateTime.parse(data.date);
     String key = _getKey(dt);
-    await dashboardDataBox.put(key, data);
+    await _dashboardDataBox.put(key, data);
     p('${Emoji.peach}${Emoji.peach} DashboardData has been cached in Hive');
   }
 
   Future<DashboardData?> getLastDashboardData() async {
     await _init();
-    var keys = await dashboardDataBox.getAllKeys();
+    var keys = await _dashboardDataBox.getAllKeys();
     p('${Emoji.peach}${Emoji.peach}${Emoji.peach} hive dash keys: ${keys.length}');
     keys.sort((a, b) => b.compareTo(a)); //sor
     if (keys.isNotEmpty) {
       // t descending
-      var data = await dashboardDataBox.get(keys[0]);
+      var data = await _dashboardDataBox.get(keys[0]);
       p('${Emoji.peach}${Emoji.peach}${Emoji.peach} Last dashboard data retrieved: ${data?.date}');
       return data;
     }
@@ -114,7 +114,7 @@ class HiveUtil {
     var bag = AggregateBag(list: aggregates, date: DateTime.now().toIso8601String());
     var date = DateTime.parse(aggregates[0].date);
     String key = _getKey(date);
-    await aggregateBox.put(key, bag);
+    await _aggregateBox.put(key, bag);
     p('${Emoji.peach}${Emoji.peach} CityAggregates have been cached in Hive');
   }
 
@@ -124,7 +124,7 @@ class HiveUtil {
         'HiveUtil: adding ${cities.length} cities to Hive');
 
     for (var city in cities) {
-      await cityBox.put(city.id!, city);
+      await _cityBox.put(city.id!, city);
       p('\n${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach}'
           ' HiveUtil: City ${city.city} has been cached in Hive\n');
     }
@@ -134,11 +134,11 @@ class HiveUtil {
 
   Future<List<CityAggregate>?> getLastAggregates() async {
     await _init();
-    var keys = await aggregateBox.getAllKeys();
+    var keys = await _aggregateBox.getAllKeys();
     keys.sort((a, b) => b.compareTo(a));
     var list = <CityAggregate>[];
     if (keys.isNotEmpty) {
-      var bag = await aggregateBox.get(keys[0]);
+      var bag = await _aggregateBox.get(keys[0]);
       if (bag != null) {
         for (var value in bag.list) {
           list.add(value);
@@ -150,15 +150,15 @@ class HiveUtil {
     return [];
   }
 
-  Future<List<City>?> getCities() async {
+  Future<List<City>> getCities() async {
     await _init();
-    var keys = await cityBox.getAllKeys();
+    var keys = await _cityBox.getAllKeys();
     p('HiveUtil:  🔴🔴 getting cities from cache ....  🔴 keys: ${keys.length}');
     keys.sort((a, b) => a.compareTo(b));
     var list = <City>[];
     if (keys.isNotEmpty) {
       for (var key in keys) {
-        var city = await cityBox.get(key);
+        var city = await _cityBox.get(key);
         if (city != null) {
           list.add(city);
         }
@@ -177,7 +177,7 @@ class HiveUtil {
 
     for (var e in events) {
       String key = '${e.cityId}-${e.placeId}-${e.eventId}';
-      await eventBox.put(key, e);
+      await _eventBox.put(key, e);
     }
 
     p('${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach}'
@@ -188,7 +188,7 @@ class HiveUtil {
 
     for (var e in places) {
       String key = '${e.cityId}-${e.placeId}';
-      await cityPlaceBox.put(key, e);
+      await _cityPlaceBox.put(key, e);
     }
 
     p('${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach}'

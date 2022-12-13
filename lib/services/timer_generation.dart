@@ -117,6 +117,7 @@ class TimerGeneration {
 
     p('$heartBlue $heartBlue $heartBlue TimerGeneration started ..... ${Emoji.redDot}');
     sendPort = params.sendPort!;
+    var start = DateTime.now().millisecondsSinceEpoch;
     _cities = await getCities(params.url);
     mCount = 0;
     _timer = Timer.periodic(Duration(seconds: params.intervalInSeconds),
@@ -132,6 +133,10 @@ class TimerGeneration {
       mCount++;
       if (mCount > params.maxTimerTicks) {
         stop();
+        var end = DateTime.now().millisecondsSinceEpoch;
+        var m = (end-start)/1000;
+        p('TimerGeneration: ${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}'
+            ' total time elapsed: ${m.toStringAsFixed(1)} seconds for whole process');
         var msg = TimerMessage(
             date: DateTime.now().toIso8601String(),
             message: 'TimerGeneration completed',

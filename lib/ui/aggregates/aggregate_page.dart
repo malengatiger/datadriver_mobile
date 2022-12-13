@@ -65,15 +65,16 @@ class AggregatePageState extends State<AggregatePage>
       aggregates = (await hiveUtil.getLastAggregates())!;
       p('${Emoji.brocolli} ... last aggregates found in hive cache: '
           '${aggregates.length}.');
-      setState(() {
-        isLoading = false;
-      });
+
       if (aggregates.isEmpty) {
         _getAggregates();
         return;
       } else {
         firstAggregate = aggregates.first;
       }
+      setState(() {
+        isLoading = false;
+      });
       _animationController.forward();
       _getDataQuietly();
 
@@ -100,13 +101,14 @@ class AggregatePageState extends State<AggregatePage>
     }
   }
 
-
   void _getAggregates() async {
     p('${Emoji.brocolli} ... getting aggregates from Firestore via api...');
-    setState(() {
-      isLoading = true;
+    _animationController.reverse().then((value) {
+      setState(() {
+        isLoading = true;
+      });
     });
-    _animationController.reverse();
+
     firstAggregate = null;
     aggregates = await apiService.getCityAggregates(minutes: minutesAgo);
     if (aggregates.isNotEmpty) {
@@ -119,8 +121,6 @@ class AggregatePageState extends State<AggregatePage>
       });
       _animationController.forward();
     }
-
-
   }
 
   @override
@@ -318,7 +318,7 @@ class AggregatePageState extends State<AggregatePage>
                       ),
                       InkWell(
                         onTap: _getAggregates,
-                        child:  MinutesAgoWidget(date: firstAggregate == null? DateTime.now() :
+                        child: firstAggregate== null? const SizedBox(): MinutesAgoWidget(date:
                         DateTime.parse(firstAggregate!.date).toLocal()),
                       ),
                       const SizedBox(
