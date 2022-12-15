@@ -8,8 +8,11 @@ import 'package:intl/intl.dart';
 import 'package:stream_channel/isolate_channel.dart';
 import 'package:universal_frontend/services/timer_generation.dart';
 
+import '../../data_models/city.dart';
+import '../../services/data_service.dart';
 import '../../services/generation_monitor.dart';
 import '../../utils/emojis.dart';
+import '../../utils/hive_util.dart';
 import '../../utils/util.dart';
 
 class GenerationPage extends StatefulWidget {
@@ -23,13 +26,31 @@ class GenerationPageState extends State<GenerationPage>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   final _formKey = GlobalKey<FormState>();
+  var cities = <City>[];
 
   @override
   void initState() {
     _controller = AnimationController(vsync: this);
     super.initState();
     _listen();
+    _getCities();
   }
+
+  void _getCities() async {
+    cities = (await hiveUtil.getCities());
+    p('${Emoji.leaf}${Emoji.leaf}${Emoji.leaf} GenerationPage: Cities from Hive cache: ${cities.length}');
+    if (cities.isEmpty) {
+      cities = await DataService.getCities();
+      await hiveUtil.addCities(cities: cities);
+    }
+    cities.sort((a, b) => a.city!.compareTo(b.city!));
+    setState(() {
+
+    });
+  }
+
+  List<DropdownMenuItem<City>>? menuItems;
+  City? selectedCity;
 
   void _listen() async {
     generationMonitor.cancelStream.listen((event) {
@@ -83,8 +104,7 @@ class GenerationPageState extends State<GenerationPage>
       try {
         setState(() {});
       } catch (e) {
-        p('${Emoji.redDot} Ignored setState error ${Emoji.redDot}${Emoji
-            .redDot}');
+        p('${Emoji.redDot} Ignored setState error ${Emoji.redDot}${Emoji.redDot}');
       }
     }
   }
@@ -147,7 +167,7 @@ class GenerationPageState extends State<GenerationPage>
                               child: Column(
                             children: [
                               const SizedBox(
-                                height: 8,
+                                height: 4,
                               ),
                               Text(
                                 'Generation Config',
@@ -155,6 +175,12 @@ class GenerationPageState extends State<GenerationPage>
                                     textStyle:
                                         Theme.of(context).textTheme.bodyLarge,
                                     fontWeight: FontWeight.w900),
+                              ),
+                              selectedCity == null?const SizedBox(): Column(
+                                children: [
+                                  const SizedBox(height: 12,),
+                                  Text('${selectedCity!.city}'),
+                                ],
                               ),
                               const SizedBox(
                                 height: 32,
@@ -191,10 +217,10 @@ class GenerationPageState extends State<GenerationPage>
                                     textStyle:
                                         Theme.of(context).textTheme.bodyMedium,
                                     fontWeight: FontWeight.w900),
-                                decoration: const InputDecoration(
-                                  label: Text('Upper Count'),
+                                decoration:  InputDecoration(
+                                  label: selectedCity == null?const Text('Upper Count'):const Text('Count'),
                                   hintText: 'Enter Upper Count',
-                                  border: OutlineInputBorder(),
+                                  border: const OutlineInputBorder(),
                                 ),
                                 // The validator receives the text that the user has entered.
                                 validator: (value) {
@@ -207,7 +233,7 @@ class GenerationPageState extends State<GenerationPage>
                               const SizedBox(
                                 height: 16,
                               ),
-                              TextFormField(
+                              selectedCity == null?TextFormField(
                                 controller: _maxController,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(),
@@ -227,7 +253,27 @@ class GenerationPageState extends State<GenerationPage>
                                   }
                                   return null;
                                 },
+                              ):const SizedBox(height: 0,),
+                              const SizedBox(
+                                height: 16,
                               ),
+                              cities.isEmpty
+                                  ? const SizedBox(
+                                      height: 0,
+                                    )
+                                  : _isGeneration? const SizedBox(height: 0,): DropdownButton<City>(
+                                hint:  Text('Select City', style: GoogleFonts.lato(
+                                    textStyle: Theme.of(context).textTheme.bodySmall,
+                                    fontWeight: FontWeight.normal,
+                                    color: Theme.of(context).primaryColor),),
+                                      items: cities.map((myCity){
+                                        return DropdownMenuItem(
+                                            value: myCity,
+                                            child: Text('${myCity.city}', style: GoogleFonts.lato(
+                                                textStyle: Theme.of(context).textTheme.bodySmall,
+                                                fontWeight: FontWeight.normal,),),
+                                        );
+                                      }).toList(), onChanged: onChanged),
                               const SizedBox(
                                 height: 16,
                               ),
@@ -392,11 +438,12 @@ class GenerationPageState extends State<GenerationPage>
     }
     var params = GenerationParameters(
         url: url,
+        city: selectedCity,
         intervalInSeconds: int.parse(_intervalController.value.text),
         upperCount: int.parse(_upperCountController.value.text),
         maxTimerTicks: int.parse(_maxController.value.text));
 
-    createIsolate(params: params);
+    _createIsolate(params: params);
     setState(() {
       _isGeneration = true;
     });
@@ -414,13 +461,19 @@ class GenerationPageState extends State<GenerationPage>
   late Isolate isolate;
   late ReceivePort receivePort = ReceivePort();
 
-  Future<void> createIsolate({required GenerationParameters params}) async {
+  Future<void> _createIsolate({required GenerationParameters params}) async {
     try {
       receivePort = ReceivePort();
       var errorReceivePort = ReceivePort();
+      var cities = await hiveUtil.getCities();
+      if (cities.isNotEmpty) {
+        params.cities = cities;
+      }
       //pass sendPort to the params so isolate can send messages
       params.sendPort = receivePort.sendPort;
-      IsolateChannel channel = IsolateChannel(receivePort, receivePort.sendPort);
+      //create channel for comms
+      IsolateChannel channel =
+          IsolateChannel(receivePort, receivePort.sendPort);
       channel.stream.listen((data) {
         p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received msg: $data');
         if (data != null) {
@@ -432,15 +485,13 @@ class GenerationPageState extends State<GenerationPage>
                   '{Emoji.blueDot} ${Emoji.blueDot} ${Emoji.blueDot} ${Emoji.redDot}');
               sendFinishedMessage();
             }
-
           } else {
             var msg = TimerMessage.fromJson(data);
             processTimerMessage(msg);
             generationMonitor.addMessage(msg);
             if (msg.statusCode == FINISHED) {
               isolate.kill();
-              p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji
-                  .redDot} isolate has been killed!');
+              p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji.redDot} isolate has been killed!');
             }
           }
         } else {
@@ -448,11 +499,10 @@ class GenerationPageState extends State<GenerationPage>
         }
       });
 
-      isolate = await Isolate.spawn<GenerationParameters>(
-          heavyTask, params,
+      isolate = await Isolate.spawn<GenerationParameters>(heavyTask, params,
           paused: true,
           onError: errorReceivePort.sendPort,
-          onExit:receivePort.sendPort );
+          onExit: receivePort.sendPort);
 
       isolate.addErrorListener(errorReceivePort.sendPort);
       isolate.resume(isolate.pauseCapability!);
@@ -460,23 +510,12 @@ class GenerationPageState extends State<GenerationPage>
 
       errorReceivePort.listen((e) {
         p('${Emoji.redDot}${Emoji.redDot} exception occurred: $e');
+
       });
-      // receivePort.listen((message) {
-      //   p('${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}'
-      //       ' isolate msg: $message');
-      //   if (message != null) {
-      //     var msg = TimerMessage.fromJson(message);
-      //     processTimerMessage(msg);
-      //     if (msg.statusCode == FINISHED) {
-      //       isolate.kill();
-      //       p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji.redDot} isolate has been killed!');
-      //     }
-      //   }
-      // });
+
     } catch (e) {
       p('${Emoji.redDot} we have a problem ${Emoji.redDot} ${Emoji.redDot}');
     }
-
     // Isolate.spawn<GenerationParameters>(heavyTask, params).then((isolate) {
     //   p('${Emoji.appleGreen }Isolate is known as: ${isolate.debugName}');
     //   isolate.addOnExitListener(responsePort)
@@ -491,10 +530,22 @@ class GenerationPageState extends State<GenerationPage>
     var msg = TimerMessage(
         date: DateTime.now().toIso8601String(),
         message: 'Generation stopped',
-        statusCode: FINISHED, events: 0);
+        statusCode: FINISHED,
+        events: 0);
     generationMonitor.addMessage(msg);
+    if (mounted) {
+      setState(() {
+        selectedCity = null;
+      });
+    }
   }
 
+  void onChanged(City? value) {
+    p('${Emoji.blueDot} GenerationPage: city selected: ${value!.city!}');
+    setState(() {
+      selectedCity = value;
+    });
+  }
 }
 
 class GenerationParameters {
@@ -503,13 +554,15 @@ class GenerationParameters {
       required this.upperCount,
       required this.maxTimerTicks,
       required this.url,
-      this.sendPort});
+      this.sendPort, this.city, this.cities});
 
   final int intervalInSeconds;
   final int upperCount;
   final int maxTimerTicks;
   final String url;
   SendPort? sendPort;
+  City? city;
+  List<City>? cities;
 }
 
 Future<void> heavyTask(GenerationParameters model) async {

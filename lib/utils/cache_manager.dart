@@ -8,11 +8,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:stream_channel/isolate_channel.dart';
 import 'package:universal_frontend/data_models/city_place.dart';
+import 'package:universal_frontend/data_models/dashboard_data.dart';
 import 'package:universal_frontend/services/cache_service.dart';
 import 'package:universal_frontend/services/data_service.dart';
 import 'package:universal_frontend/utils/util.dart';
 
 import '../data_models/city.dart';
+import '../data_models/city_aggregate.dart';
 import '../data_models/event.dart';
 import 'emojis.dart';
 import 'hive_util.dart';
@@ -35,8 +37,6 @@ class CacheManagerState extends State<CacheManager>
   var cities = <City>[];
   var _showCities = false;
 
-
-
   @override
   void initState() {
     _animationController = AnimationController(
@@ -45,12 +45,12 @@ class CacheManagerState extends State<CacheManager>
       reverseDuration: const Duration(milliseconds: 2000),
       vsync: this,
     )..addStatusListener((AnimationStatus status) {
-      setState(() {
-        // setState needs to be called to trigger a rebuild because
-        // the 'HIDE FAB'/'SHOW FAB' button needs to be updated based
-        // the latest value of [_controller.status].
+        setState(() {
+          // setState needs to be called to trigger a rebuild because
+          // the 'HIDE FAB'/'SHOW FAB' button needs to be updated based
+          // the latest value of [_controller.status].
+        });
       });
-    });
     super.initState();
     _getCities();
   }
@@ -67,11 +67,8 @@ class CacheManagerState extends State<CacheManager>
     if (cities.isEmpty) {
       cities = await DataService.getCities();
     }
-    cities.sort((a,b) => a.city!.compareTo(b.city!));
-    setState(() {
-
-    });
-
+    cities.sort((a, b) => a.city!.compareTo(b.city!));
+    setState(() {});
   }
 
   void _saveCities(CacheMessage msg) async {
@@ -114,6 +111,30 @@ class CacheManagerState extends State<CacheManager>
     p('CacheManager: ${Emoji.appleRed}${Emoji.appleRed} ${events.length} events cached in Hive');
   }
 
+  void _saveDashboards(CacheMessage msg) async {
+    String mJson = msg.dashboards!;
+    List m = jsonDecode(mJson);
+    for (var value in m) {
+      var k = DashboardData.fromJson(value);
+      await hiveUtil.addDashboardData(data: k);
+    }
+
+    p('CacheManager: ${Emoji.appleRed}${Emoji.appleRed} ${m.length} dashboards cached in Hive');
+  }
+
+  void _saveAggregates(CacheMessage msg) async {
+    String mJson = msg.aggregates!;
+    List m = jsonDecode(mJson);
+    var aggregates = <CityAggregate>[];
+    for (var value in m) {
+      var k = CityAggregate.fromJson(value);
+      aggregates.add(k);
+    }
+    await hiveUtil.addAggregates( aggregates: aggregates);
+
+    p('CacheManager: ${Emoji.appleRed}${Emoji.appleRed} ${aggregates.length} aggregates cached in Hive');
+  }
+
   void _startCache() async {
     setState(() {
       isCaching = true;
@@ -146,6 +167,7 @@ class CacheManagerState extends State<CacheManager>
                       'received end message from CacheService, will remove loading ui '
                       '${Emoji.heartBlue}${Emoji.heartBlue}');
                 }
+                selectedCity = null;
                 setState(() {});
                 break;
               case TYPE_CITY:
@@ -157,6 +179,12 @@ class CacheManagerState extends State<CacheManager>
               case TYPE_EVENT:
                 _saveEvents(msg);
                 break;
+              case TYPE_DASHBOARDS:
+                _saveDashboards(msg);
+                break;
+              case TYPE_AGGREGATES:
+                _saveAggregates(msg);
+                break;
               default:
                 p('........... type not available! wtf? ${Emoji.redDot}');
                 break;
@@ -164,11 +192,12 @@ class CacheManagerState extends State<CacheManager>
             _scrollToBottom();
           } catch (e) {
             p(e);
-            setState(() {
-              isCaching = false;
-            });
-            _scrollToBottom();
-
+            if (mounted) {
+              setState(() {
+                isCaching = false;
+              });
+              _scrollToBottom();
+            }
           }
         }
       });
@@ -181,7 +210,12 @@ class CacheManagerState extends State<CacheManager>
       if (status == 'prod') {
         url = dotenv.env['PROD_URL'];
       }
-      var params = CacheParameters(sendPort: receivePort.sendPort, url: url!, city: city, daysAgo: daysAgo);
+      var params = CacheParameters(
+          sendPort: receivePort.sendPort,
+          url: url!,
+          city: city,
+          daysAgo: daysAgo);
+
       isolate = await Isolate.spawn<CacheParameters>(heavyTask, params,
           paused: true,
           onError: errorReceivePort.sendPort,
@@ -194,30 +228,10 @@ class CacheManagerState extends State<CacheManager>
       errorReceivePort.listen((e) {
         p('${Emoji.redDot}${Emoji.redDot} exception occurred: $e');
       });
-      // receivePort.listen((message) {
-      //   p('${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}'
-      //       ' isolate msg: $message');
-      //   if (message != null) {
-      //     var msg = TimerMessage.fromJson(message);
-      //     processTimerMessage(msg);
-      //     if (msg.statusCode == FINISHED) {
-      //       isolate.kill();
-      //       p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji.redDot} isolate has been killed!');
-      //     }
-      //   }
-      // });
     } catch (e) {
       p('${Emoji.redDot} we have a problem ${Emoji.redDot} ${Emoji.redDot}');
     }
 
-    // Isolate.spawn<GenerationParameters>(heavyTask, params).then((isolate) {
-    //   p('${Emoji.appleGreen }Isolate is known as: ${isolate.debugName}');
-    //   isolate.addOnExitListener(responsePort)
-    // }).catchError((err) {
-    //   p('${Emoji.redDot} We have an error : $err');
-    // }).whenComplete(() {
-    //   p('${Emoji.leaf}${Emoji.leaf} Isolate is complete. Tell someone');
-    // });
   }
 
   void _scrollToBottom() {
@@ -231,130 +245,30 @@ class CacheManagerState extends State<CacheManager>
     }
   }
 
+  var txtController = TextEditingController(text: '3');
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cache Boss'),
-        bottom: PreferredSize(preferredSize: const Size.fromHeight(48),child: Column(
-          children: [
-            Row(mainAxisAlignment: MainAxisAlignment.end,
-              children:  [
-                const Text('Cache One City? '),
-                const SizedBox(width: 8,),
-                ElevatedButton(onPressed: () {
-                  setState(() {
-                    _showCities = true;
-                  });
-                }, child: const Text('Yes')),
-                const SizedBox(width: 8,),
-              ],
-            ),
-            const SizedBox(height: 12,),
-          ],
-        ),),
-      ),
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left:8.0, right: 24,top: 16, bottom: 16),
-            child: AnimatedBuilder(animation: _animationController,
-                builder: (context, child){
-                  return FadeScaleTransition(
-                      animation: _animationController,
-                      child: child);
-
-                },
-                child: Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.0)),
-                child: Column(
-                  children: [
-                     SizedBox(
-                      height: selectedCity == null? 16:120,
-                    ),
-                    selectedCity == null?const Text('Data caching logs'):Text('${selectedCity!.city} cache logs'),
-                     SizedBox(
-                      height: selectedCity == null? 8:24,
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                          itemCount: messages.length,
-                          controller: listScrollController,
-                          itemBuilder: (context, index) {
-                            var msg = messages.elementAt(index);
-                            return messages.isEmpty
-                                ? const Center(
-                                    child: Text('No Progress yet'),
-                                  )
-                                : Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                                  child: Card(
-                                      elevation: 2,
-                                      child: Row(
-                                        children: [
-                                          // Text(
-                                          //   'Code: ${msg.statusCode}',
-                                          //   style: GoogleFonts.lato(
-                                          //       textStyle: Theme.of(context)
-                                          //           .textTheme
-                                          //           .bodySmall,
-                                          //       fontWeight: FontWeight.normal,
-                                          //       fontSize: 11),
-                                          // ),
-                                          // const SizedBox(
-                                          //   width: 4,
-                                          // ),
-                                          SizedBox(
-                                            width: 60,
-                                            child: Text(
-                                              '${msg.elapsedSeconds?.toStringAsFixed(1)} sec',
-                                              style: GoogleFonts.lato(
-                                                  textStyle: Theme.of(context)
-                                                      .textTheme
-                                                      .bodySmall,
-                                                  fontWeight: FontWeight.normal,
-                                                  fontSize: 11),
-                                            ),
-                                          ),
-                                          const SizedBox(
-                                            width: 4,
-                                          ),
-                                          Flexible(
-                                            child: Text(
-                                              msg.message,
-                                              style: GoogleFonts.lato(
-                                                  textStyle: Theme.of(context)
-                                                      .textTheme
-                                                      .bodySmall,
-                                                  fontWeight: FontWeight.normal,
-                                                  fontSize: 11),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                );
-                          }),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          isCaching
-              ? Positioned(
-                  left: 32,
-                  bottom: 32,
-                  child: Card(
-                    elevation: 16,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Row(
+    return GestureDetector(
+      onTap: () {
+        p('${Emoji.pear}${Emoji.pear} getting rid of possible keyboard!');
+        FocusManager.instance.primaryFocus?.unfocus();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Cache Boss'),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: isCaching
+                ? const SizedBox(
+                    height: 0,
+                  )
+                : Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           Text(
-                            'Caching data',
+                            'Cache One City?',
                             style: GoogleFonts.lato(
                                 textStyle:
                                     Theme.of(context).textTheme.bodySmall,
@@ -362,58 +276,255 @@ class CacheManagerState extends State<CacheManager>
                                 fontSize: 12),
                           ),
                           const SizedBox(
-                            width: 10,
+                            width: 16,
+                          ),
+                          SizedBox(
+                            width: 80,
+                            child: TextField(
+                              keyboardType: TextInputType.number,
+                              controller: txtController,
+                              onEditingComplete: () {},
+                              decoration: InputDecoration(
+                                  label: Text(
+                                    'Days Ago',
+                                    style: GoogleFonts.lato(
+                                        textStyle: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall,
+                                        fontWeight: FontWeight.normal,
+                                        fontSize: 12),
+                                  ),
+                                  hintText: 'Enter Days Ago'),
+                            ),
                           ),
                           const SizedBox(
-                            height: 16,
                             width: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 4,
-                              backgroundColor: Colors.pink,
-                            ),
-                          )
+                          ),
+                          ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  _showCities = true;
+                                });
+                              },
+                              child: Text(
+                                'Yes',
+                                style: GoogleFonts.lato(
+                                    textStyle:
+                                        Theme.of(context).textTheme.bodySmall,
+                                    fontWeight: FontWeight.normal,
+                                    fontSize: 12),
+                              )),
+                          const SizedBox(
+                            width: 8,
+                          ),
                         ],
                       ),
-                    ),
-                  ))
-              : const SizedBox(
-                  height: 0,
+                      const SizedBox(
+                        height: 12,
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+        body: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(
+                  left: 8.0, right: 24, top: 16, bottom: 16),
+              child: AnimatedBuilder(
+                animation: _animationController,
+                builder: (context, child) {
+                  return FadeScaleTransition(
+                      animation: _animationController, child: child);
+                },
+                child: Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.0)),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: selectedCity == null ? 16 : 120,
+                      ),
+                      selectedCity == null
+                          ? const Text('Data caching logs')
+                          : Text('${selectedCity!.city} cache logs'),
+                      SizedBox(
+                        height: selectedCity == null ? 8 : 24,
+                      ),
+                      Expanded(
+                        child: ListView.builder(
+                            itemCount: messages.length,
+                            controller: listScrollController,
+                            itemBuilder: (context, index) {
+                              var msg = messages.elementAt(index);
+                              return messages.isEmpty
+                                  ? const Center(
+                                      child: Text('No Progress yet'),
+                                    )
+                                  : Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8.0),
+                                      child: Card(
+                                        elevation: 2,
+                                        child: Row(
+                                          children: [
+                                            // Text(
+                                            //   'Code: ${msg.statusCode}',
+                                            //   style: GoogleFonts.lato(
+                                            //       textStyle: Theme.of(context)
+                                            //           .textTheme
+                                            //           .bodySmall,
+                                            //       fontWeight: FontWeight.normal,
+                                            //       fontSize: 11),
+                                            // ),
+                                            // const SizedBox(
+                                            //   width: 4,
+                                            // ),
+                                            SizedBox(
+                                              width: 60,
+                                              child: Text(
+                                                '${msg.elapsedSeconds?.toStringAsFixed(1)} sec',
+                                                style: GoogleFonts.lato(
+                                                    textStyle: Theme.of(context)
+                                                        .textTheme
+                                                        .bodySmall,
+                                                    fontWeight:
+                                                        FontWeight.normal,
+                                                    fontSize: 11),
+                                              ),
+                                            ),
+                                            const SizedBox(
+                                              width: 4,
+                                            ),
+                                            Flexible(
+                                              child: Text(
+                                                msg.message,
+                                                style: GoogleFonts.lato(
+                                                    textStyle: Theme.of(context)
+                                                        .textTheme
+                                                        .bodySmall,
+                                                    fontWeight:
+                                                        FontWeight.normal,
+                                                    fontSize: 11),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                            }),
+                      ),
+                    ],
+                  ),
                 ),
-          _showCities? Positioned(child: CitySelector(cities: cities,
-              onSelected: onSelected, elevation: 4)): const SizedBox(height: 0,),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        elevation: 8,
-        tooltip: 'Cache Every City',
-        onPressed: () {
-          if (isCaching) {
-            p('${Emoji.redDot} Sorry, this exchange is currently busy!');
-            return;
-          }
-          _animationController.forward();
-          _startCache();
-        },
-        child: isCaching?  const SizedBox(
-            height: 20, width: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 8, backgroundColor: Colors.pink,
-            )):const Icon(Icons.directions_walk),
+              ),
+            ),
+            isCaching
+                ? Positioned(
+                    left: 4,
+                    top: 0,
+                    child: Card(
+                      elevation: 16,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Caching data',
+                              style: GoogleFonts.lato(
+                                  textStyle:
+                                      Theme.of(context).textTheme.bodySmall,
+                                  fontWeight: FontWeight.normal,
+                                  fontSize: 12),
+                            ),
+                            const SizedBox(
+                              width: 10,
+                            ),
+                            const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 4,
+                                backgroundColor: Colors.pink,
+                              ),
+                            )
+                          ],
+                        ),
+                      ),
+                    ))
+                : const SizedBox(
+                    height: 0,
+                  ),
+            _showCities
+                ? Positioned(
+                    child: CitySelector(
+                        cities: cities, onSelected: onSelected, elevation: 4))
+                : const SizedBox(
+                    height: 0,
+                  ),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          elevation: 8,
+          tooltip: 'Cache Every City',
+          onPressed: () {
+            if (isCaching) {
+              p('${Emoji.redDot} Sorry, this exchange is currently busy!');
+              return;
+            }
+            setState(() {
+              selectedCity = null;
+            });
+            _animationController.forward();
+            _startCache();
+          },
+          child: isCaching
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 8,
+                    backgroundColor: Colors.pink,
+                  ))
+              : const Icon(Icons.directions_walk),
+        ),
       ),
     );
   }
 
   City? selectedCity;
 
-  onSelected(City city) {
+  onSelected(City city) async {
     selectedCity = city;
+    p('${Emoji.pear}${Emoji.pear} getting rid of possible keyboard from method onSelected!');
+    FocusManager.instance.primaryFocus?.unfocus();
     messages.clear();
+
     setState(() {
       _showCities = false;
       isCaching = true;
     });
     _animationController.forward();
-    _createIsolate(city: selectedCity, daysAgo: 7);
+    p('${Emoji.redDot}${Emoji.redDot}${Emoji.redDot}'
+        ' creating isolate with daysAgo parameter = ${txtController.value.text}');
+
+    //test code
+    var places = await hiveUtil.getCityPlaces(cityId: city.id!);
+    var events = await hiveUtil.getCityEvents(cityId: city.id!);
+    if (places.isNotEmpty) {
+      var ev = await hiveUtil.getPlaceEvents(placeId: places.first.placeId!);
+      p('${Emoji.blueDot}${Emoji.blueDot}${Emoji.blueDot} '
+          'CacheManager:  ${ev.length} '
+          'events found for ${places.first.name!}');
+    }
+    p('${Emoji.blueDot}${Emoji.blueDot}${Emoji.blueDot} '
+        'CacheManager: ${places.length} places and ${events.length} '
+        'events found for ${selectedCity!.city}');
+    //
+    _createIsolate(
+        city: selectedCity, daysAgo: int.parse(txtController.value.text));
+
   }
 }
 
@@ -424,9 +535,13 @@ Future<void> heavyTask(CacheParameters cacheParams) async {
   cacheService.startCaching(params: cacheParams);
 }
 
-
 class CitySelector extends StatelessWidget {
-  const CitySelector({Key? key, required this.cities, required this.onSelected, required this.elevation}) : super(key: key);
+  const CitySelector(
+      {Key? key,
+      required this.cities,
+      required this.onSelected,
+      required this.elevation})
+      : super(key: key);
 
   final List<City> cities;
   final double elevation;
@@ -437,41 +552,54 @@ class CitySelector extends StatelessWidget {
     return Card(
       elevation: elevation,
       child: Column(
-        children:  [
-          const SizedBox(height: 12,),
-          const Text('City List', style: TextStyle(fontSize: 16,fontWeight: FontWeight.w900),),
-          const SizedBox(height: 12,),
-          Expanded(child: ListView.builder(
-              itemCount: cities.length,
-              itemBuilder: (context,index) {
-                var city = cities.elementAt(index);
-            return InkWell(
-              onTap: () {
-                onSelected(city);
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.0),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        Text('${city.city}'),
-                        const SizedBox(width: 4,),
-                        city.adminName == null? const SizedBox(height: 0,): Text('${city.adminName}'),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          })),
+        children: [
+          const SizedBox(
+            height: 12,
+          ),
+          const Text(
+            'City List',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(
+            height: 12,
+          ),
+          Expanded(
+              child: ListView.builder(
+                  itemCount: cities.length,
+                  itemBuilder: (context, index) {
+                    var city = cities.elementAt(index);
+                    return GestureDetector(
+                      onTap: () {
+                        onSelected(city);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.0),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
+                              children: [
+                                Text('${city.city}'),
+                                const SizedBox(
+                                  width: 4,
+                                ),
+                                city.adminName == null
+                                    ? const SizedBox(
+                                        height: 0,
+                                      )
+                                    : Text('${city.adminName}'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  })),
         ],
       ),
     );
   }
 }
-

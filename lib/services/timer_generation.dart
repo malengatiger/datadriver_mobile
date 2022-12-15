@@ -57,7 +57,7 @@ class TimerGeneration {
       p("$heartOrange HTTP Url: $fullUrl");
       var response = await client
           .get(Uri.parse(fullUrl))
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 90));
       p('${Emoji.brocolli} ${Emoji.brocolli} TimerGeneration: We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode}');
 
@@ -90,7 +90,7 @@ class TimerGeneration {
       var start = DateTime.now().millisecondsSinceEpoch;
       var response = await client
           .get(Uri.parse(fullUrl))
-          .timeout(const Duration(seconds: 60));
+          .timeout(const Duration(seconds: 90));
       p('${Emoji.brocolli} ${Emoji.brocolli} TimerGeneration: We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode}');
       var end = DateTime.now().millisecondsSinceEpoch;
@@ -118,7 +118,36 @@ class TimerGeneration {
     p('$heartBlue $heartBlue $heartBlue TimerGeneration started ..... ${Emoji.redDot}');
     sendPort = params.sendPort!;
     var start = DateTime.now().millisecondsSinceEpoch;
-    _cities = await getCities(params.url);
+    if (params.city != null) {
+      _timer = Timer.periodic(const Duration(days: 100), (timer) { });
+      var result =
+      await generateEventsByCity(cityId: params.city!.id!, count: params.upperCount, url: params.url);
+      p('$appleRed $appleRed ${result.count} events generated for ${Emoji.brocolli} ${params.city!.city}\n');
+      stop();
+      var end = DateTime.now().millisecondsSinceEpoch;
+      var m = (end-start)/1000;
+      p('TimerGeneration: ${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}'
+          ' total time elapsed: ${m.toStringAsFixed(1)} seconds for ${params.city!.city}');
+      var msg = TimerMessage(
+          date: DateTime.now().toIso8601String(),
+          message: 'TimerGeneration completed',
+          statusCode: FINISHED,
+          cityName: '',
+          events: result.count!);
+
+      try {
+        sendPort.send(msg.toJson());
+      } catch (e) {
+        //ignore
+      }
+      return;
+    }
+
+    if (params.cities == null) {
+      _cities = await getCities(params.url);
+    } else {
+      _cities = params.cities!;
+    }
     mCount = 0;
     _timer = Timer.periodic(Duration(seconds: params.intervalInSeconds),
         (timer) async {

@@ -35,6 +35,7 @@ class DashboardMobileState extends State<DashboardMobile>
   bool showStop = false;
   bool isRefresh = false, isLoading = false;
   bool isGenerating = false;
+  var dashboards = <DashboardData>[];
   DashboardData? dashData;
   var apiService = ApiService();
 
@@ -48,6 +49,11 @@ class DashboardMobileState extends State<DashboardMobile>
     super.initState();
     _listen();
     _getLocalData();
+  }
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   void _listen() {
@@ -68,6 +74,16 @@ class DashboardMobileState extends State<DashboardMobile>
           _processTimerMessage(message);
           setState(() {});
         }
+      }
+    });
+    generationMonitor.cancelStream.listen((event) {
+      p('${Emoji.pear}${Emoji.pear}${Emoji.pear}${Emoji.pear} '
+          ' DashboardMobile... Received generator done message from cancelStream .... $event');
+      if (mounted) {
+        setState(() {
+          isGenerating = false;
+        });
+        _getDashboardDataQuietly();
       }
     });
   }
@@ -119,53 +135,64 @@ class DashboardMobileState extends State<DashboardMobile>
           dashboardCreatedDate = DateTime.parse(dashData!.date);
           isLoading = false;
         });
-        _getDashboardDataQuietly();
+        //_getDashboardDataQuietly();
       } else {
         _getDashboardData();
       }
       _animationController.forward();
     } catch (e) {
-      setState(() {
-        isGenerating = false;
-      });
-      var ding = EmojiAlert(
-        emojiSize: 32,
-        alertTitle: const Text('DataDriver+'),
-        background: Theme.of(context).backgroundColor,
-        height: 200,
-        emojiType: EMOJI_TYPE.CONFUSED,
-        description: Text(
-          'Error $e',
-          style: const TextStyle(fontSize: 11),
-        ),
-      );
-      ding.displayAlert(context);
+      if (mounted) {
+        setState(() {
+          isGenerating = false;
+        });
+        var ding = EmojiAlert(
+          emojiSize: 32,
+          alertTitle: const Text('DataDriver+'),
+          background: Theme.of(context).backgroundColor,
+          height: 200,
+          emojiType: EMOJI_TYPE.CONFUSED,
+          description: Text(
+            'Error $e',
+            style: const TextStyle(fontSize: 11),
+          ),
+        );
+        ding.displayAlert(context);
+      }
     }
   }
 
   void _getDashboardData() async {
     p('$redDot $redDot ... getting dashboard data .............');
-    setState(() {
-      isLoading = true;
-    });
-    _animationController.reverse();
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+      });
+      _animationController.reverse();
+    }
 
     try {
       p('${Emoji.brocolli} ... getting DashboardData from remote');
 
-      dashData = await apiService.getDashboardData(minutesAgo: minutesAgo);
-      dashData!.date = DateTime.now().toIso8601String();
-      dashboardCreatedDate = DateTime.parse(dashData!.date);
-      await hiveUtil.addDashboardData(data: dashData!);
-      setState(() {
-        isLoading = false;
-        dashboardCreatedDate = DateTime.parse(dashData!.date).toLocal();
-      });
-      _animationController.forward();
+      dashboards = await apiService.getDashboardData(minutesAgo: minutesAgo);
+      if (dashboards.isNotEmpty) {
+        dashData = dashboards.first;
+        for (var d in dashboards) {
+          await hiveUtil.addDashboardData(data: d);
+
+        }
+        dashData!.date = DateTime.now().toIso8601String();
+        dashboardCreatedDate = DateTime.parse(dashData!.date);
+        setState(() {
+          isLoading = false;
+          dashboardCreatedDate = DateTime.parse(dashData!.date).toLocal();
+        });
+        _animationController.forward();
+      }
+
     } catch (e) {
       setState(() {
         isLoading = false;
-        date = DateTime.parse(dashData!.date).toLocal();
+        date = DateTime.now().toLocal();
       });
       var ding = EmojiAlert(
         emojiSize: 32,
@@ -192,30 +219,52 @@ class DashboardMobileState extends State<DashboardMobile>
     });
     try {
       p('${Emoji.brocolli} ... getting DashboardData from remote');
-      dashData = await apiService.getDashboardData(minutesAgo: minutesAgo);
-      dashData!.date = DateTime.now().toIso8601String();
-      dashboardCreatedDate = DateTime.parse(dashData!.date);
-      await hiveUtil.addDashboardData(data: dashData!);
-      setState(() {
-        showGenerator = false;
-      });
-      _animationController.forward();
+      dashboards = await apiService.getDashboardData(minutesAgo: minutesAgo);
+      if (dashboards.isNotEmpty) {
+        dashData = dashboards.first;
+        dashData!.date = DateTime.now().toIso8601String();
+        dashboardCreatedDate = DateTime.parse(dashData!.date);
+        for (var d in dashboards) {
+          await hiveUtil.addDashboardData(data: d);
+
+        }
+        setState(() {
+          showGenerator = false;
+        });
+        _animationController.forward();
+
+      }
+
     } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      var ding = EmojiAlert(
-        emojiSize: 32,
-        alertTitle: const Text('DataDriver+'),
-        background: Theme.of(context).backgroundColor,
-        height: 360,
-        emojiType: EMOJI_TYPE.CONFUSED,
-        description: Text(
-          'Error $e',
-          style: const TextStyle(fontSize: 11),
-        ),
-      );
-      ding.displayAlert(context);
+      if (mounted) {
+        p('......... ${Emoji.blueDot} setting state on Error! ....');
+        setState(() {
+          isGenerating = false;
+        });
+        p('......... ${Emoji.blueDot} starting Future.delayed for 500 ms ....');
+        Future.delayed(const Duration(milliseconds: 500)).then((value) {
+          var height = 0.0;
+          if ('$e'.length > 500) {
+            height = 360;
+          } else {
+            height = 300;
+          }
+          var ding = EmojiAlert(
+            emojiSize: 32,
+            alertTitle: const Text('DataDriver+'),
+            background: Theme
+                .of(context)
+                .backgroundColor,
+            height: height,
+            emojiType: EMOJI_TYPE.CONFUSED,
+            description: Text(
+              '$e',
+              style: const TextStyle(fontSize: 11),
+            ),
+          );
+          ding.displayAlert(context);
+        });
+      }
     }
   }
 

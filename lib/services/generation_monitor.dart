@@ -24,17 +24,19 @@ class GenerationMonitor {
     // initialization logic
   }
 
-   final StreamController<TimerMessage> _controller = StreamController.broadcast();
-   Stream<TimerMessage>  get timerStream => _controller.stream;
+  final StreamController<TimerMessage> _controller =
+      StreamController.broadcast();
+  Stream<TimerMessage> get timerStream => _controller.stream;
 
-   final StreamController<String> _controller2 = StreamController.broadcast();
-  Stream<String>  get cancelStream => _controller2.stream;
+  final StreamController<String> _controller2 = StreamController.broadcast();
+  Stream<String> get cancelStream => _controller2.stream;
 
-   void addMessage(TimerMessage timerMessage) {
+  void addMessage(TimerMessage timerMessage) {
     p('${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen} '
         'adding timer message to stream ...');
     _controller.sink.add(timerMessage);
   }
+
   void sendStopMessage() {
     p('${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen} '
         'adding stop timer message to stream ...');

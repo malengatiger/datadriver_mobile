@@ -32,6 +32,7 @@ class DashDesktopState extends State<DashDesktop>
   late AnimationController _controller;
 
   DashboardData? dashData;
+  var dashboards = <DashboardData>[];
   var apiService = ApiService();
   bool isLoading = false;
   @override
@@ -47,7 +48,10 @@ class DashDesktopState extends State<DashDesktop>
       isLoading = true;
     });
     try {
-      dashData = await apiService.getDashboardData(minutesAgo: minutesAgo);
+      dashboards = await apiService.getDashboardData(minutesAgo: minutesAgo);
+      if (dashboards.isNotEmpty) {
+        dashData = dashboards.first;
+      }
     } catch (e) {
       p('$redDot get data failed');
       var em = EmojiAlert(

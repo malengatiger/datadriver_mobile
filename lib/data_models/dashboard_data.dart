@@ -1,4 +1,6 @@
 import 'package:hive/hive.dart';
+
+import '../utils/util.dart';
 part 'dashboard_data.g.dart';
 
 @HiveType(typeId: 0)
@@ -21,14 +23,9 @@ class DashboardData {
   late String date;
   @HiveField(8)
   late int longDate;
+  @HiveField(9)
+  late double elapsedSeconds;
 
-/*
-DashboardData {
-    private long events, cities, places, users;
-    private double amount, averageRating;
-    private int minutesAgo;
-    private long longDate;
-    private String date; */
   DashboardData(
       {required this.events,
       required this.cities,
@@ -38,7 +35,8 @@ DashboardData {
       required this.amount,
       required this.averageRating,
       required this.date,
-      required this.longDate,});
+      required this.longDate,
+      required this.elapsedSeconds});
 
   DashboardData.fromJson(Map<String, dynamic> json) {
     amount = json['amount'];
@@ -46,10 +44,17 @@ DashboardData {
     cities = json['cities'];
     places = json['places'];
     users = json['users'];
-    minutesAgo = json['minutesAgo'];
+    if (json['minutesAgo'] != null) {
+      minutesAgo = json['minutesAgo'];
+    }
+
     longDate = json['longDate'];
     averageRating = json['averageRating'];
     date = json['date'];
+    if (json['elapsedSeconds'] != null) {
+      elapsedSeconds = json['elapsedSeconds'];
+    }
+
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -62,6 +67,6 @@ DashboardData {
         'averageRating': averageRating,
         'date': date,
         'longDate': longDate,
-
+        'elapsedSeconds': elapsedSeconds,
       };
 }

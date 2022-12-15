@@ -10,10 +10,10 @@ import '../utils/emojis.dart';
 import '../utils/util.dart';
 
 abstract class AbstractApiService {
-  Future<DashboardData?> getDashboardData({required int minutesAgo});
+  Future<List<DashboardData>> getDashboardData({required int minutesAgo});
   Future<GenerationMessage?> generateEventsByCity(
       {required String cityId, required int count});
-  Future<List<CityAggregate>> getCityAggregates({required int minutes});
+  Future<List<CityAggregate>> getCityAggregates({required int minutesAgo});
   Future<List<GenerationMessage>> generateEventsByCities(
       {required List<String> cityIds, required int upperCount});
 }
@@ -24,7 +24,6 @@ class ApiService implements AbstractApiService {
   ApiService() {
     p('$heartOrange $heartOrange  HttpService constructed');
     client = http.Client();
-    p('$heartOrange $heartOrange  http.Client created:  ${client.toString()}');
     setStatus();
   }
 
@@ -121,11 +120,11 @@ class ApiService implements AbstractApiService {
   }
 
   @override
-  Future<List<CityAggregate>> getCityAggregates({required int minutes}) async {
+  Future<List<CityAggregate>> getCityAggregates({required int minutesAgo}) async {
     p('$appleGreen ... apiService getting aggregates ...');
     var results = <CityAggregate>[];
     setStatus();
-    var suffix1 = 'getCityAggregates?minutes=$minutes';
+    var suffix1 = 'getCityAggregates?minutesAgo=$minutesAgo';
     var fullUrl = '';
     if (url != null) {
       fullUrl = '$url$suffix1';
@@ -163,9 +162,9 @@ class ApiService implements AbstractApiService {
   }
 
   @override
-  Future<DashboardData?> getDashboardData({required int minutesAgo}) async {
-    p('$appleGreen ... apiService getting aggregates ...');
-    DashboardData? results;
+  Future<List<DashboardData>> getDashboardData({required int minutesAgo}) async {
+    p('$appleGreen ... apiService getting DashboardData ...');
+    var results = <DashboardData>[];
     setStatus();
     var suffix1 = 'getDashboardData?minutesAgo=$minutesAgo';
     var fullUrl = '';
@@ -182,22 +181,29 @@ class ApiService implements AbstractApiService {
           .get(Uri.parse(fullUrl))
           .timeout(const Duration(seconds: 120));
       p('${Emoji.brocolli} ${Emoji.brocolli} We have a response from the DataDriver API! '
-          '$heartOrange statusCode: ${response.statusCode} body: ${response.body} ');
+          '$heartOrange statusCode: ${response.statusCode} ');
       var end = DateTime.now().millisecondsSinceEpoch;
       var elapsed = (end - start)/1000;
       p('${Emoji.brocolli} ${Emoji.brocolli} Elapsed time: ${elapsed.toStringAsFixed(1)} seconds for network call');
 
       if (response.statusCode == 200) {
-        results = DashboardData.fromJson(json.decode(response.body));
+        Iterable dashboardJson = json.decode(response.body);
+        results = List<DashboardData>.from(
+            dashboardJson.map((model) => DashboardData.fromJson(model)));
         return results;
       } else {
-        p('$redDot Error Response status code: ${response.statusCode}');
+        p('$redDot ApiService: Error Response status code: ${response.statusCode}');
         throw Exception(
             '$redDot $redDot $redDot Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      p('$redDot $redDot $redDot Things got a little fucked up! $e');
-      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
+      p('$redDot $redDot $redDot ApiService: Things got a little fucked up! $e');
+      p(e);
+      if ('$e'.contains('Connection refused')) {
+        throw Exception('$redDot Server is not available! \n\nPlease try again later!');
+      } else {
+        throw Exception('$redDot Problem with the network\n\nPlease try again later! $e');
+      }
     }
   }
 }

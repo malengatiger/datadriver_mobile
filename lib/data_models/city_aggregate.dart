@@ -14,7 +14,7 @@ class CityAggregate {
   @HiveField(4)
   late int numberOfEvents;
   @HiveField(5)
-  late int hours;
+  late int minutesAgo;
   @HiveField(6)
   late double totalSpent;
   @HiveField(7)
@@ -23,6 +23,8 @@ class CityAggregate {
   late double latitude;
   @HiveField(9)
   late double longitude;
+  @HiveField(10)
+  late double elapsedSeconds;
 
   CityAggregate({
     required this.averageRating,
@@ -30,15 +32,21 @@ class CityAggregate {
     required this.cityName,
     required this.date,
     required this.numberOfEvents,
-    required this.hours,
+    required this.minutesAgo,
     required this.totalSpent,
     required this.longDate,
     required this.latitude,
     required this.longitude,
+    required this.elapsedSeconds,
   });
 
   CityAggregate.fromJson(Map<String, dynamic> json) {
-    hours = json['hours'];
+    minutesAgo = json['minutesAgo'];
+    if (json['elapsedSeconds'] != null) {
+      elapsedSeconds = json['elapsedSeconds'];
+    } else {
+      elapsedSeconds = 0.0;
+    }
     averageRating = json['averageRating'];
     cityId = json['cityId'];
     cityName = json['cityName'];
@@ -51,7 +59,7 @@ class CityAggregate {
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
-        'hours': hours,
+        'minutesAgo': minutesAgo,
         'averageRating': averageRating,
         'cityId': cityId,
         'cityName': cityName,

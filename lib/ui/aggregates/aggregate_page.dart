@@ -1,4 +1,6 @@
 
+import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -14,6 +16,7 @@ import 'package:badges/badges.dart';
 import '../../services/timer_generation.dart';
 import '../../utils/hive_util.dart';
 import '../../utils/util.dart';
+import '../charts/aggregates_line_chart.dart';
 import '../city/city_map.dart';
 import '../dashboard/widgets/minutes_ago_widget.dart';
 import 'aggregates_map.dart';
@@ -71,6 +74,8 @@ class AggregatePageState extends State<AggregatePage>
         return;
       } else {
         firstAggregate = aggregates.first;
+        var hashMap = HashMap<String,CityAggregate>();
+        _filterAggregates(hashMap);
       }
       setState(() {
         isLoading = false;
@@ -91,10 +96,12 @@ class AggregatePageState extends State<AggregatePage>
     // _animationController.reverse();
     p('_getDataQuietly starting ... refreshing aggregates ${Emoji.blueDot}');
     firstAggregate = null;
-    aggregates = await apiService.getCityAggregates(minutes: minutesAgo);
+    aggregates = await apiService.getCityAggregates(minutesAgo: minutesAgo);
     if (aggregates.isNotEmpty) {
       firstAggregate = aggregates.first;
       hiveUtil.addAggregates(aggregates: aggregates);
+      var hashMap = HashMap<String,CityAggregate>();
+      _filterAggregates(hashMap);
     }
     if (mounted) {
       setState(() {});
@@ -110,10 +117,13 @@ class AggregatePageState extends State<AggregatePage>
     });
 
     firstAggregate = null;
-    aggregates = await apiService.getCityAggregates(minutes: minutesAgo);
+    aggregates = await apiService.getCityAggregates(minutesAgo: minutesAgo);
+    //only the latest aggregates here ......
+    var hashMap = HashMap<String, CityAggregate>();
     if (aggregates.isNotEmpty) {
       firstAggregate = aggregates.first;
       await hiveUtil.addAggregates(aggregates: aggregates);
+      _filterAggregates(hashMap);
     }
     if (mounted) {
       setState(() {
@@ -121,6 +131,18 @@ class AggregatePageState extends State<AggregatePage>
       });
       _animationController.forward();
     }
+  }
+
+  void _filterAggregates(HashMap<String, CityAggregate> hashMap) {
+    for (var agg in aggregates) {
+      if (!hashMap.containsKey(agg.cityId)) {
+        hashMap[agg.cityId] = agg;
+        p('Latest aggregate: ${agg.date} added to hashMap ${Emoji.appleRed}${Emoji.appleRed} ${agg.cityName}');
+      }
+    }
+    aggregates = hashMap.values.map((e) => e).toList();
+    aggregates.sort((a,b) => a.cityName.compareTo(b.cityName));
+    p('${aggregates.length} filtered aggregates ${Emoji.appleRed}${Emoji.appleRed}');
   }
 
   @override
@@ -143,6 +165,28 @@ class AggregatePageState extends State<AggregatePage>
                 duration: const Duration(milliseconds: 1000),
                 child: CityMap(aggregate: agg,)));
         p('$appleGreen $appleGreen Did it happen?:  ${agg.cityName} ...');
+        return "I am data";
+        // throw Exception("Custom Error");
+      });
+
+    } catch (e) {
+      p(e);
+    }
+  }
+
+  void navigateToAggregatesLineChart() {
+    p('$appleGreen $appleGreen Navigating to AggregatesLineChart:  ${aggregates.length} aggregates');
+    try {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        p('$appleGreen $appleGreen trying to launch AggregatesLineChart after delay');
+
+        Navigator.push(
+            context,
+            PageTransition(
+                type: PageTransitionType.scale,
+                alignment: Alignment.bottomCenter,
+                duration: const Duration(milliseconds: 1000),
+                child: AggregatesLineChart(aggregates: aggregates,)));
         return "I am data";
         // throw Exception("Custom Error");
       });
@@ -195,9 +239,6 @@ class AggregatePageState extends State<AggregatePage>
       events += element.numberOfEvents;
     }
 
-    // var currencyFormat =
-    //     NumberFormat.compactCurrency(locale: Platform.localeName)
-    //         .currencySymbol;
     var f = NumberFormat.compact();
     final fe = NumberFormat.compact();
     var amt = f.format(total);
@@ -698,5 +739,15 @@ class AggregatePageState extends State<AggregatePage>
 
   void navigateToCityList() {}
 
-  void navigateToCharts() {}
+  void navigateToCharts() {
+    Navigator.push(
+        context,
+        PageTransition(
+            type: PageTransitionType.scale,
+            alignment: Alignment.bottomCenter,
+            duration: const Duration(milliseconds: 1000),
+            child: AggregatesLineChart(
+              aggregates: aggregates,
+            )));
+  }
 }

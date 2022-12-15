@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 
 import '../data_models/city.dart';
 import '../data_models/city_place.dart';
@@ -225,11 +226,39 @@ class DataService {
     return m.count;
   }
 
+  static Future<void> updateCityCount(
+      DocumentReference feedbackRef, int good, int bad, String docId) async {
+    var db = FirebaseFirestore.instance;
+
+    var postRef =
+    db.collection("eventCityCounts").doc(docId);
+
+    await db.runTransaction((transaction) async {
+      await transaction.get(postRef).then((res) async {
+        if (!res.exists) {
+          throw PlatformException(
+            code: '400',
+            message: "Could not find eventCount post for the feedback.",
+          );
+        }
+
+        // var goodCount = res.data['good'] + good;
+        // var badCount = res.data['bad'] + bad;
+
+        transaction.update(postRef, {
+          'eventCount': 120000,
+          'longDate': 989767765,
+          'totalSpent': 87686
+        });
+      });
+    });
+  }
+
   static Future<EventBag> getPaginatedEvents({
     required String cityId,
     required int days, required int limit, DocumentSnapshot? lastDocument}) async {
     var db = FirebaseFirestore.instance;
-    p('${Emoji.blueDot}${Emoji.blueDot} getPaginatedEvents ...');
+    p('${Emoji.blueDot}${Emoji.blueDot} getting PaginatedEvents with limit(page size): $limit...');
     DateTime dt = DateTime.now().subtract(Duration(days: days));
     late QuerySnapshot<Map<String,dynamic>> querySnapshot;
     if (lastDocument == null) {
@@ -254,7 +283,7 @@ class DataService {
     if (querySnapshot.docs.isNotEmpty) {
       lastDocument = querySnapshot.docs[querySnapshot.docs.length - 1];
       p('${Emoji.blueDot}${Emoji.blueDot} Found ${querySnapshot.docs
-          .length} events in querySnapshot in the last $days days');
+          .length} events in 1 page; querySnapshot in the last $days days');
 
 
       for (var doc in querySnapshot.docs) {
@@ -263,9 +292,11 @@ class DataService {
         list.add(m);
       }
       p('${Emoji.blueDot}${Emoji.blueDot} Found ${list
-          .length} events in the last $days days');
+          .length} paginated events in the last $days days');
       p('${Emoji.blueDot}${Emoji.blueDot} Last document id: ${lastDocument
           .id}');
+    } else {
+      p('${Emoji.redDot}${Emoji.redDot} Found no paginated data');
     }
 
       var bag = EventBag(list, lastDocument);

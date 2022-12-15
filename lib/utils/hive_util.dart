@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:hive/hive.dart';
@@ -36,7 +37,7 @@ class HiveUtil {
   }
 
   late final BoxCollection _boxCollection;
-  late CollectionBox<AggregateBag> _aggregateBox;
+  late CollectionBox<CityAggregate> _aggregateBox;
   late CollectionBox<DashboardData> _dashboardDataBox;
   late CollectionBox<Event> _eventBox;
   late CollectionBox<City> _cityBox;
@@ -50,14 +51,13 @@ class HiveUtil {
       File file = File('${appDir.path}/db.file');
 
       _boxCollection = await BoxCollection.open(
-        'MyGreatBox', // Name of your database
-        {'events', 'aggregateBags', 'dashboardData', 'cities', 'cityPlaces'}, // Names of your boxes
+        'DataBoxOne', // Name of your database
+        {'events', 'aggregates', 'dashboardData', 'cities', 'cityPlaces'}, // Names of your boxes
         path: file
             .path, // Path where to store your boxes (Only used in Flutter / Dart IO)
       );
 
       Hive.registerAdapter(DashboardDataAdapter());
-      Hive.registerAdapter(AggregateBagAdapter());
       Hive.registerAdapter(CityAggregateAdapter());
       Hive.registerAdapter(EventBagAdapter());
       Hive.registerAdapter(EventAdapter());
@@ -70,7 +70,7 @@ class HiveUtil {
 
       // Open your boxes. Optional: Give it a type.
       _aggregateBox =
-          await _boxCollection.openBox<AggregateBag>('aggregateBags');
+          await _boxCollection.openBox<CityAggregate>('aggregates');
       _dashboardDataBox =
           await _boxCollection.openBox<DashboardData>('dashboardData');
       _eventBox = await _boxCollection.openBox<Event>('events');
@@ -109,13 +109,30 @@ class HiveUtil {
     return null;
   }
 
+  Future<List<DashboardData>> getDashboardDataList() async {
+    await _init();
+    var keys = await _dashboardDataBox.getAllKeys();
+    p('${Emoji.peach}${Emoji.peach}${Emoji.peach} hive dash keys: ${keys.length}');
+    keys.sort((a, b) => a.compareTo(b));
+    var list = <DashboardData>[];
+    for (var key in keys) {
+      var dd = await _dashboardDataBox.get(key);
+      if (dd != null) {
+        list.add(dd);
+      }
+    }
+    return list;
+  }
+
   Future<void> addAggregates({required List<CityAggregate> aggregates}) async {
     await _init();
-    var bag = AggregateBag(list: aggregates, date: DateTime.now().toIso8601String());
-    var date = DateTime.parse(aggregates[0].date);
-    String key = _getKey(date);
-    await _aggregateBox.put(key, bag);
-    p('${Emoji.peach}${Emoji.peach} CityAggregates have been cached in Hive');
+
+    for (var agg in aggregates) { 
+      String mKey = '${agg.cityId}-${agg.longDate}';
+      await _aggregateBox.put(mKey, agg);
+    }
+
+    p('${Emoji.peach}${Emoji.peach} ${aggregates.length} CityAggregates have been cached in Hive');
   }
 
   Future<void> addCities({required List<City> cities}) async {
@@ -138,16 +155,27 @@ class HiveUtil {
     keys.sort((a, b) => b.compareTo(a));
     var list = <CityAggregate>[];
     if (keys.isNotEmpty) {
-      var bag = await _aggregateBox.get(keys[0]);
-      if (bag != null) {
-        for (var value in bag.list) {
-          list.add(value);
-        }
+      for (var key in keys) {
+        var agg = await _aggregateBox.get(key);
+        list.add(agg!);
       }
-      p('🔷🔷🔷🔷HiveUtil: Aggregates found in cache: ${list.length}');
+      p('🔷🔷🔷🔷HiveUtil: latest Aggregates found in cache: ${list.length}');
+      _filterAggregates(list);
       return list;
     }
     return [];
+  }
+  void _filterAggregates(List<CityAggregate> aggregates) {
+    var hashMap = HashMap<String, CityAggregate>();
+    for (var agg in aggregates) {
+      if (!hashMap.containsKey(agg.cityId)) {
+        hashMap[agg.cityId] = agg;
+        p('Latest aggregate: ${agg.date} added to hashMap ${Emoji.appleRed}${Emoji.appleRed} ${agg.cityName}');
+      }
+    }
+    aggregates = hashMap.values.map((e) => e).toList();
+    aggregates.sort((a,b) => a.cityName.compareTo(b.cityName));
+    p('${aggregates.length} filtered aggregates ${Emoji.appleRed}${Emoji.appleRed}');
   }
 
   Future<List<City>> getCities() async {
@@ -193,6 +221,59 @@ class HiveUtil {
 
     p('${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach}'
         ' HiveUtil:${places.length} places have been cached in Hive');
+  }
+
+  Future<List<CityPlace>> getCityPlaces({required String cityId}) async {
+    var places = <CityPlace>[];
+    var keys = await _cityPlaceBox.getAllKeys();
+    for (var key in keys) {
+      if (key.contains(cityId)) {
+        var m = await _cityPlaceBox.get(key);
+        if (m != null) {
+          places.add(m);
+        }
+      }
+    }
+
+    places.sort((a,b) => a.name!.compareTo(b.name!));
+    p('HiveUtil: city places found in cache: ${places.length} ${Emoji.peach}${Emoji.peach}');
+
+    return places;
+  }
+  Future<List<Event>> getCityEvents({required String cityId}) async {
+    var events = <Event>[];
+    var keys = await _eventBox.getAllKeys();
+    for (var key in keys) {
+      if (key.contains(cityId)) {
+        var m = await _eventBox.get(key);
+        if (m != null) {
+          events.add(m);
+        }
+      }
+    }
+
+    //sort by date descending
+    events.sort((a,b) => b.longDate.compareTo(a.longDate));
+    p('HiveUtil: city events found in cache: ${events.length} ${Emoji.peach}${Emoji.peach}');
+    return events;
+  }
+  Future<List<Event>> getPlaceEvents({required String placeId}) async {
+    var events = <Event>[];
+    var keys = await _eventBox.getAllKeys();
+    for (var key in keys) {
+      if (key.contains(placeId)) {
+        var m = await _eventBox.get(key);
+        if (m != null) {
+          events.add(m);
+        }
+      }
+    }
+
+    //sort by date descending
+    events.sort((a,b) => b.longDate.compareTo(a.longDate));
+    p('HiveUtil: place events found in cache: ${events.length} ${Emoji.peach}${Emoji.peach}');
+
+    return events;
   }
 
 }

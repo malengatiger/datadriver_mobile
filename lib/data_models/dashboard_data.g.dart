@@ -26,13 +26,14 @@ class DashboardDataAdapter extends TypeAdapter<DashboardData> {
       averageRating: fields[6] as double,
       date: fields[7] as String,
       longDate: fields[8] as int,
+      elapsedSeconds: fields[9] as double,
     );
   }
 
   @override
   void write(BinaryWriter writer, DashboardData obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.events)
       ..writeByte(1)
@@ -50,7 +51,9 @@ class DashboardDataAdapter extends TypeAdapter<DashboardData> {
       ..writeByte(7)
       ..write(obj.date)
       ..writeByte(8)
-      ..write(obj.longDate);
+      ..write(obj.longDate)
+      ..writeByte(9)
+      ..write(obj.elapsedSeconds);
   }
 
   @override

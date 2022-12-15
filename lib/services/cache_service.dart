@@ -2,9 +2,12 @@ import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:intl/intl.dart';
+import 'package:universal_frontend/data_models/city_aggregate.dart';
 import 'package:universal_frontend/data_models/city_place.dart';
+import 'package:universal_frontend/data_models/dashboard_data.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:http/http.dart' as http;
+import 'package:universal_frontend/utils/providers.dart';
 
 import '../data_models/city.dart';
 import '../data_models/event.dart';
@@ -18,7 +21,11 @@ class CacheParameters {
   late City? city;
   late int daysAgo = 3;
 
-  CacheParameters({required this.sendPort, required this.url, this.city, required this.daysAgo});
+  CacheParameters(
+      {required this.sendPort,
+      required this.url,
+      this.city,
+      required this.daysAgo});
 }
 
 class CacheMessage {
@@ -27,7 +34,7 @@ class CacheMessage {
   late int type;
   late String date;
   late double? elapsedSeconds;
-  late String? cities, places, events;
+  late String? cities, places, events, aggregates, dashboards;
 
   CacheMessage(
       {required this.message,
@@ -37,7 +44,9 @@ class CacheMessage {
       required this.type,
       this.cities,
       this.places,
-      this.events});
+      this.events,
+      this.aggregates,
+      this.dashboards});
 
   CacheMessage.fromJson(Map<String, dynamic> json) {
     message = json['message'];
@@ -48,6 +57,8 @@ class CacheMessage {
     cities = json['cities'];
     places = json['places'];
     events = json['events'];
+    aggregates = json['aggregates'];
+    dashboards = json['dashboards'];
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -59,10 +70,16 @@ class CacheMessage {
         'cities': cities,
         'places': places,
         'events': events,
+        'dashboards': dashboards,
+        'aggregates': aggregates,
       };
 }
 
-const TYPE_MESSAGE = 0, TYPE_CITY = 1, TYPE_PLACE = 2, TYPE_EVENT = 3;
+const TYPE_MESSAGE = 0,
+    TYPE_CITY = 1,
+    TYPE_PLACE = 2,
+    TYPE_EVENT = 3,
+    TYPE_AGGREGATES = 4, TYPE_DASHBOARDS = 5;
 const STATUS_BUSY = 201, STATUS_DONE = 200, STATUS_ERROR = 500;
 
 class CacheService {
@@ -85,6 +102,8 @@ class CacheService {
   var cities = <City>[];
   var places = <CityPlace>[];
   var start = 0;
+  final numberFormat = NumberFormat.compact();
+
   late SendPort sendPort;
 
   void startCaching({required CacheParameters params}) async {
@@ -94,12 +113,16 @@ class CacheService {
     start = DateTime.now().millisecondsSinceEpoch;
     var url = params.url;
     if (params.city != null) {
-        _cacheOneCity(params: params);
-        return;
+      _cacheOneCity(params: params);
+      return;
     }
+    //cache dashboards
+    var m = await _cacheDashboards(url: url, daysAgo: params.daysAgo);
+    _processMessage(mStart: start, message: '$m dashboards');
+
     //cache cities
-    await _cacheCities(url: url);
-    _processMessage(mStart: start, message: 'cities');
+    var i = await _cacheCities(url: url);
+    _processMessage(mStart: start, message: '$i cities');
 
     p('${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen}'
         ' CacheService: caching places and events for ${cities.length} cities ...');
@@ -107,13 +130,31 @@ class CacheService {
       for (var city in cities) {
         //cache places ....
         var mStart = DateTime.now().millisecondsSinceEpoch;
-        await _cachePlaces(cityId: city.id!, cityName: city.city!, url: url);
-        _processMessage(mStart: mStart, message: '🍎 ${city.city} places');
-
+        var numberOfPlaces = await _cachePlaces(
+            cityId: city.id!, cityName: city.city!, url: url);
+        _processMessage(
+            mStart: mStart,
+            message:
+                '🍎${city.city} - ${numberFormat.format(numberOfPlaces)} places');
         //cache events ...
         mStart = DateTime.now().millisecondsSinceEpoch;
-        await _cacheEvents(cityId: city.id!, cityName: city.city!, url: url, daysAgo: params.daysAgo);
-        _processMessage(mStart: mStart, message: '🥬${city.city} events');
+        var numberOfEvents = await _cacheEvents(
+            cityId: city.id!,
+            cityName: city.city!,
+            url: url,
+            daysAgo: params.daysAgo);
+        _processMessage(
+            mStart: mStart,
+            message:
+                '🥬${city.city} - ${numberFormat.format(numberOfEvents)} events');
+        //
+        mStart = DateTime.now().millisecondsSinceEpoch;
+        var aggregates = await _cacheAggregates(
+            cityId: city.id!, cityName: city.city!, url: url);
+        _processMessage(
+            mStart: mStart,
+            message:
+                '🥬${city.city} - ${numberFormat.format(aggregates)} aggregates');
       }
     } else {
       p('${Emoji.redDot} ${Emoji.redDot} No cities found anywhere!');
@@ -143,8 +184,6 @@ class CacheService {
     p('${Emoji.leaf} CacheService: Main caching took $secs seconds to complete! ${Emoji.redDot}${Emoji.redDot}');
   }
 
-  final numberFormat = NumberFormat.compact();
-
   void _cacheOneCity({required CacheParameters params}) async {
     sendPort = params.sendPort;
     p('\n\n${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen}'
@@ -163,10 +202,11 @@ class CacheService {
         elapsedSeconds: elapsed,
         type: TYPE_PLACE);
 
-    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${places.length} places via sendPort: ${params.city}\n');
+    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${places.length} places via sendPort: ${params.city!.city}\n');
     sendPort.send(msg.toJson());
     msg = CacheMessage(
-        message: '💙${params.city!.city!} ${numberFormat.format(places.length)} places',
+        message:
+            '💙${params.city!.city!} ${numberFormat.format(places.length)} places',
         statusCode: STATUS_BUSY,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
@@ -190,18 +230,37 @@ class CacheService {
         elapsedSeconds: elapsed,
         type: TYPE_EVENT);
 
-    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${events.length} events via sendPort: ${params.city}\n');
+    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${events.length} events via sendPort: ${params.city!.city}\n');
     sendPort.send(msg.toJson());
     //send events message
     msg = CacheMessage(
-        message: '💙${params.city!.city!} ${numberFormat.format(events.length)} events',
+        message:
+            '💙${params.city!.city!} ${numberFormat.format(events.length)} events',
         statusCode: STATUS_BUSY,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
         type: TYPE_MESSAGE);
 
-    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning caching DONE message via sendPort: ${params.city}\n');
+    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning caching DONE message via sendPort: ${params.city!.city!}\n');
     sendPort.send(msg.toJson());
+    //send aggregates message
+    mStart = DateTime.now().millisecondsSinceEpoch;
+    var m = _cacheAggregates(cityId: params.city!.id!, url: params.url, cityName: params.city!.city!);
+    mEnd = DateTime.now().millisecondsSinceEpoch;
+    elapsed = (mEnd - mStart) / 1000;
+    jsonTags = jsonEncode(events);
+    msg = CacheMessage(
+        message:
+        '💙${params.city!.city!} ${numberFormat.format(events.length)} aggregates',
+        statusCode: STATUS_BUSY,
+        date: DateTime.now().toIso8601String(),
+        aggregates: jsonTags,
+        elapsedSeconds: elapsed,
+        type: TYPE_AGGREGATES);
+
+    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning caching DONE message via sendPort: ${params.city!.city!}\n');
+    sendPort.send(msg.toJson());
+
     //send DONE message
     elapsed = (mEnd - start) / 1000;
     msg = CacheMessage(
@@ -211,9 +270,8 @@ class CacheService {
         elapsedSeconds: elapsed,
         type: TYPE_MESSAGE);
 
-    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning caching DONE message via sendPort: ${params.city}\n');
+    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning caching DONE message via sendPort: ${params.city!.city}\n');
     sendPort.send(msg.toJson());
-
   }
 
   void _processMessage({required int mStart, required String message}) {
@@ -228,9 +286,10 @@ class CacheService {
     sendPort.send(msg.toJson());
   }
 
-  Future<void> _cacheCities({required String url}) async {
+  Future<int> _cacheCities({required String url}) async {
     var mStart = DateTime.now().millisecondsSinceEpoch;
     cities = await _getCities(url);
+    cities.sort((a, b) => a.city!.compareTo(b.city!));
     var mEnd = DateTime.now().millisecondsSinceEpoch;
     double elapsed = (mEnd - mStart) / 1000;
     String jsonTags = jsonEncode(cities);
@@ -245,14 +304,16 @@ class CacheService {
 
     p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${cities.length} cities via sendPort\n');
     sendPort.send(msg.toJson());
+    return cities.length;
   }
 
-  Future<void> _cachePlaces(
+  Future<int> _cachePlaces(
       {required String cityId,
       required String cityName,
       required String url}) async {
     var mStart = DateTime.now().millisecondsSinceEpoch;
     places = await _getCityPlaces(cityId: cityId, url: url);
+    places.sort((a, b) => a.name!.compareTo(b.name!));
     var mEnd = DateTime.now().millisecondsSinceEpoch;
     double elapsed = (mEnd - mStart) / 1000;
     String jsonTags = jsonEncode(places);
@@ -266,16 +327,40 @@ class CacheService {
 
     p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${places.length} places via sendPort: $cityName\n');
     sendPort.send(msg.toJson());
+    return places.length;
   }
 
-  Future<void> _cacheEvents(
+  Future<int> _cacheAggregates(
       {required String cityId,
       required String cityName,
-      required String url, required int daysAgo}) async {
+      required String url}) async {
+    var mStart = DateTime.now().millisecondsSinceEpoch;
+    var aggregates = await _getCityAggregates(cityId: cityId, url: url);
+    var mEnd = DateTime.now().millisecondsSinceEpoch;
+    double elapsed = (mEnd - mStart) / 1000;
+    String jsonTags = jsonEncode(aggregates);
+    var msg = CacheMessage(
+        message: 'city aggregates returned',
+        statusCode: STATUS_BUSY,
+        aggregates: jsonTags,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: TYPE_AGGREGATES);
+
+    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${aggregates.length} aggregates via sendPort: $cityName\n');
+    sendPort.send(msg.toJson());
+    return aggregates.length;
+  }
+
+  Future<int> _cacheEvents(
+      {required String cityId,
+      required String cityName,
+      required String url,
+      required int daysAgo}) async {
     var mStart = DateTime.now().millisecondsSinceEpoch;
     var events = await _getCityEvents(
         cityId: cityId,
-        minutes: (24 * 60 * daysAgo),   //3 days worth of events
+        minutes: (24 * 60 * daysAgo), //3 days worth of events
         url: url);
     var mEnd = DateTime.now().millisecondsSinceEpoch;
     double elapsed = (mEnd - mStart) / 1000;
@@ -290,6 +375,29 @@ class CacheService {
 
     p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${events.length} events via sendPort: $cityName\n');
     sendPort.send(msg.toJson());
+    return events.length;
+  }
+
+  Future<int> _cacheDashboards(
+      {required String url, required int daysAgo}) async {
+    var mStart = DateTime.now().millisecondsSinceEpoch;
+    var dashboards =
+        await _getDashboards(minutesAgo: daysAgo * 60 * 24, url: url);
+    var mEnd = DateTime.now().millisecondsSinceEpoch;
+    double elapsed = (mEnd - mStart) / 1000;
+    String jsonTags = jsonEncode(dashboards);
+    var msg = CacheMessage(
+        message: '${dashboards.length} dashboards cached',
+        statusCode: STATUS_BUSY,
+        dashboards: jsonTags,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: TYPE_DASHBOARDS);
+
+    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${dashboards.length} '
+        'dashboards via sendPort: ${dashboards.length}\n');
+    sendPort.send(msg.toJson());
+    return dashboards.length;
   }
 
   static Future<List<City>> _getCities(String url) async {
@@ -371,6 +479,44 @@ class CacheService {
     return filteredCityPlaces;
   }
 
+  static Future<List<CityAggregate>> _getCityAggregates(
+      {required String cityId, required String url}) async {
+    var client = http.Client();
+    var suffix1 =
+        'getCityAggregatesByCity?cityId=$cityId&minutesAgo=$minutesAgo';
+    var fullUrl = '';
+    fullUrl = '$url$suffix1';
+    var aggregates = <CityAggregate>[];
+    var start = DateTime.now().millisecondsSinceEpoch;
+
+    try {
+      p("$heartOrange HTTP Url: $fullUrl");
+      var response = await client
+          .get(Uri.parse(fullUrl))
+          .timeout(const Duration(seconds: 30));
+      p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: We have a response from the DataDriver API! $heartOrange '
+          'statusCode: ${response.statusCode} body length: ${response.body.length}');
+      var end = DateTime.now().millisecondsSinceEpoch;
+      var elapsed = (end - start) / 1000;
+      p('${Emoji.brocolli}${Emoji.brocolli} CacheService: '
+          ' elapsed time for network call: $heartOrange '
+          ' $elapsed seconds');
+      if (response.statusCode == 200) {
+        Iterable jsonIterable = json.decode(response.body);
+        aggregates = List<CityAggregate>.from(
+            jsonIterable.map((model) => CityAggregate.fromJson(model)));
+      } else {
+        p('$redDot Error Response status code: ${response.statusCode}');
+        throw Exception(
+            '$redDot $redDot $redDot Server could not handle request: ${response.body}');
+      }
+    } catch (e) {
+      p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
+      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
+    }
+    return aggregates;
+  }
+
   static Future<List<Event>> _getCityEvents(
       {required String cityId,
       required int minutes,
@@ -407,5 +553,42 @@ class CacheService {
       throw Exception('$redDot $redDot $redDot Network screwed up! $e');
     }
     return events;
+  }
+
+  static Future<List<DashboardData>> _getDashboards(
+      {required int minutesAgo, required String url}) async {
+    var client = http.Client();
+    var suffix1 = 'getDashboardData?minutesAgo=$minutesAgo';
+    var fullUrl = '';
+    fullUrl = '$url$suffix1';
+    var dashboards = <DashboardData>[];
+    var start = DateTime.now().millisecondsSinceEpoch;
+
+    try {
+      p("$heartOrange HTTP Url: $fullUrl");
+      var response = await client
+          .get(Uri.parse(fullUrl))
+          .timeout(const Duration(seconds: 90));
+      p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: We have a response from the DataDriver API! $heartOrange '
+          'statusCode: ${response.statusCode}');
+      var end = DateTime.now().millisecondsSinceEpoch;
+      var elapsed = (end - start) / 1000;
+      p('${Emoji.brocolli}${Emoji.brocolli} CacheService: '
+          ' elapsed time for network call: $heartOrange '
+          ' $elapsed seconds');
+      if (response.statusCode == 200) {
+        Iterable l = json.decode(response.body);
+        dashboards = List<DashboardData>.from(
+            l.map((model) => DashboardData.fromJson(model)));
+      } else {
+        p('$redDot Error Response status code: ${response.statusCode}');
+        throw Exception(
+            '$redDot $redDot $redDot Server could not handle request: ${response.body}');
+      }
+    } catch (e) {
+      p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
+      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
+    }
+    return dashboards;
   }
 }

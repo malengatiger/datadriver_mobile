@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:universal_frontend/services/data_service.dart';
+import 'package:universal_frontend/services/generation_monitor.dart';
 import 'package:universal_frontend/services/timer_generation.dart';
 import 'package:universal_frontend/ui/dashboard/dashboard_main.dart';
 import 'package:universal_frontend/ui/generation/generation_page.dart';
@@ -27,8 +28,10 @@ Future<void> heavyTask(GenerationParameters model) async {
   timerGeneration = TimerGeneration();
   timerGeneration.start(params: model);
 }
-Future<void> createIsolate() async {
-  p('creating isolate ${Emoji.blueDot}');
+
+Future<void> _createIsolate() async {
+  p('\ncreating isolate from main ${Emoji.blueDot}${Emoji.blueDot}${Emoji.blueDot}');
+
   var status = dotenv.env['CURRENT_STATUS'];
   late String url = '';
   if (status == 'dev') {
@@ -38,15 +41,19 @@ Future<void> createIsolate() async {
   }
   p('${Emoji.heartOrange} url is: $url');
   var rp = ReceivePort();
+  var cities = await hiveUtil.getCities();
   var params = GenerationParameters(
       url: url,
-      intervalInSeconds: 10,
-      upperCount: 200,
+      cities: cities,
+      intervalInSeconds: 5,
+      upperCount: 300,
       sendPort: rp.sendPort,
-      maxTimerTicks: 0);
+      maxTimerTicks: 10);
 
   var isolate = await Isolate.spawn<GenerationParameters>(
-      heavyTask, params,);
+    heavyTask,
+    params,
+  );
   p('${Emoji.pear}${Emoji.pear}${Emoji.pear} isolate debug name is ${isolate.debugName}');
   rp.listen((message) {
     if (message != null) {
@@ -56,7 +63,9 @@ Future<void> createIsolate() async {
       if (m['statusCode'] == FINISHED) {
         isolate.kill();
         p('${Emoji.diamond}${Emoji.diamond}${Emoji.diamond}${Emoji.diamond}'
-            ' isolate is done! finis! - isolate killed!');
+            ' isolate is done! finis! kaput! - isolate killed!');
+        //send message on stream ....
+        generationMonitor.sendStopMessage();
       }
     }
   });
@@ -72,9 +81,11 @@ void setup() {
 // Alternatively you could write it if you don't like global variables
 //   GetIt.I.registerSingleton<AppModel>(AppModel());
 }
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  firebaseApp = await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  firebaseApp = await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform);
   p('$heartBlue Firebase App has been initialized: ${firebaseApp.name}');
 
   await dotenv.load(fileName: ".env");
@@ -91,15 +102,38 @@ Future<void> main() async {
   }
 
   var list = await hiveUtil.getCities();
-  p('💙💙💙💙💙 ... Cities from Hive cache: ${list?.length}');
-  createIsolate();
+  p('💙💙💙💙💙 ... Cities from Hive cache: ${list.length}');
+
+  //_createIsolate();
+
   DataService.listenForAuth();
-  DataService.getPaginatedEvents(cityId: 'c0751f57-2493-47f8-b8a6-664637992db5', days: 10, limit: 100);
+  var res = await DataService.getPaginatedEvents(
+      cityId: '25156118-6aaf-4d5a-9e89-2eef5d58e3c3', days: 10, limit: 100);
+  p('🍏🍏🍏 paginated query result: ${res.events.length} events in the page 🍏🍏🍏');
   if (kIsWeb) {
     p('💙💙💙💙💙 We are running on the web!');
   }
   // wrap the entire app with a ProviderScope so that widgets
   // will be able to read providers
+  if (kIsWeb) {
+    p('💙💙💙💙💙 We are running on the web and setting up DevicePreview');
+    runApp(ProviderScope(
+      child: DevicePreview(
+          enabled: !kReleaseMode,
+          builder: (context) {
+            return const MyApp();
+          } // Wrap your app
+          ),
+    ));
+  } else {
+    p('💙💙💙💙💙 We are running on the mobile and no need of DevicePreview...');
+    runApp(
+      const ProviderScope(child: MyApp()
+          // Wrap your app
+          ),
+    );
+  }
+
   runApp(ProviderScope(
     child: DevicePreview(
         enabled: !kReleaseMode,
@@ -118,16 +152,25 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'DataDriver+',
-      debugShowCheckedModeBanner: false,
-      theme: FlexThemeData.light(scheme: FlexScheme.mallardGreen),
-      // The Mandy red, dark theme.
-      darkTheme: FlexThemeData.dark(scheme: FlexScheme.mallardGreen),
-      // Use dark or light theme based on system setting.
-      themeMode: ThemeMode.system,
-      // home: const AggregatePage(),
-      home: const DashboardMain(),
+    return GestureDetector(
+      onTap: () {
+        p('${Emoji.pear} Top level GestureDetector has detected a tap');
+        FocusScopeNode currentFocus = FocusScope.of(context);
+        if (!currentFocus.hasPrimaryFocus) {
+          currentFocus.unfocus();
+        }
+      },
+      child: MaterialApp(
+        title: 'DataDriver+',
+        debugShowCheckedModeBanner: false,
+        theme: FlexThemeData.light(scheme: FlexScheme.mallardGreen),
+        // The Mandy red, dark theme.
+        darkTheme: FlexThemeData.dark(scheme: FlexScheme.mallardGreen),
+        // Use dark or light theme based on system setting.
+        themeMode: ThemeMode.system,
+        // home: const AggregatePage(),
+        home: const DashboardMain(),
+      ),
     );
   }
 }
