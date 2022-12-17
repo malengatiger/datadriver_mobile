@@ -71,14 +71,3 @@ class CityAggregate {
         'longitude': longitude,
       };
 }
-/*
-@HiveType(typeId: 0)
-class Person extends HiveObject {
-
-  @HiveField(0)
-  String name;
-
-  @HiveField(1)
-  int age;
-}
- */

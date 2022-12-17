@@ -15,6 +15,7 @@ import 'package:universal_frontend/services/data_service.dart';
 import 'package:universal_frontend/ui/city/city_map_header.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/minutes_ago_widget.dart';
 import 'package:universal_frontend/utils/emojis.dart';
+import 'package:universal_frontend/utils/hive_util.dart';
 import 'package:universal_frontend/utils/providers.dart';
 import 'dart:ui' as ui;
 import '../../data_models/city.dart';
@@ -39,7 +40,7 @@ class CityMapState extends State<CityMap> with SingleTickerProviderStateMixin {
 
   static const CameraPosition _inTheAtlanticOcean = CameraPosition(
     target: LatLng(0.0, 0.0),
-    zoom: 14,
+    zoom: 4,
   );
 
   City? city;
@@ -61,9 +62,7 @@ class CityMapState extends State<CityMap> with SingleTickerProviderStateMixin {
       vsync: this,
     )..addStatusListener((AnimationStatus status) {
         setState(() {
-          // setState needs to be called to trigger a rebuild because
-          // the 'HIDE FAB'/'SHOW FAB' button needs to be updated based
-          // the latest value of [_controller.status].
+
         });
       });
     super.initState();
@@ -99,17 +98,23 @@ class CityMapState extends State<CityMap> with SingleTickerProviderStateMixin {
   }
 
   _getCity() async {
-    city = await DataService.getCity(cityId: widget.aggregate.cityId);
-    if (city != null) {
-      p('$diamond $diamond CityMap: Found city: ${city?.city} on Firestore');
-    }
+    //get city from hive first
+    city = await hiveUtil.getCity(cityId: widget.aggregate.cityId);
+    city ??= await DataService.getCity(cityId: widget.aggregate.cityId);
   }
 
   _getEvents() async {
-    p('...... getting cityEvents via DataService ... cityId: ${widget.aggregate.cityId} ${Emoji.brocolli}');
-    events = await DataService.getCityEvents(
-        cityId: widget.aggregate.cityId, minutes: minutesAgo);
-    p('$diamond $diamond CityMap: Found ${events.length} events on Firestore');
+    events = await hiveUtil.getCityEventsMinutesAgo(
+        cityId: widget.aggregate.cityId,
+        minutesAgo: minutesAgo);
+    if (events.isEmpty) {
+      p('...... getting cityEvents via DataService ... cityId: ${widget
+          .aggregate.cityId} ${Emoji.brocolli}');
+      events = await DataService.getCityEvents(
+          cityId: widget.aggregate.cityId, minutesAgo: minutesAgo);
+      p('$diamond $diamond CityMap: Found ${events
+          .length} events on Firestore');
+    }
 
   }
 
@@ -170,8 +175,11 @@ class CityMapState extends State<CityMap> with SingleTickerProviderStateMixin {
   }
 
   _getPlaces() async {
-    places = await DataService.getCityPlaces(cityId: widget.aggregate.cityId);
-    p('$diamond $diamond CityMap: Found ${places.length} city places on Firestore');
+    places = await hiveUtil.getCityPlaces(cityId: widget.aggregate.cityId);
+    if (places.isEmpty) {
+      places = await DataService.getCityPlaces(cityId: widget.aggregate.cityId);
+    }
+    p('$diamond $diamond CityMap: Found ${places.length} city places cached or not');
   }
 
   Future<void> _putPlaceMarkersOnMap() async {
@@ -191,7 +199,7 @@ class CityMapState extends State<CityMap> with SingleTickerProviderStateMixin {
           infoWindow: InfoWindow(
               title: place.name,
               onTap: () {
-                p('tapped ${place.name} $redDot $redDot in InfoWindow');
+                p('tapped ${place.name} ${Emoji.redDot} ${Emoji.redDot} in InfoWindow');
                 _showPlaceCard(place);
               }),
         );
@@ -211,7 +219,7 @@ class CityMapState extends State<CityMap> with SingleTickerProviderStateMixin {
             infoWindow: InfoWindow(
                 title: agg.name,
                 onTap: () {
-                  p('tapped ${agg.name} $redDot $redDot in InfoWindow');
+                  p('tapped ${agg.name} ${Emoji.redDot} ${Emoji.redDot} in InfoWindow');
                   _showPlaceAggregate(agg);
                 }),
           );

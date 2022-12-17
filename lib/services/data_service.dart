@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
+import 'package:universal_frontend/utils/hive_util.dart';
 
 import '../data_models/city.dart';
 import '../data_models/city_place.dart';
@@ -28,7 +29,7 @@ class DataService {
 
     FirebaseAuth.instance.userChanges().listen((User? user) async {
       if (user == null) {
-        p('$redDot User is currently signed out! ');
+        p('${Emoji.redDot} User is currently signed out! ');
         var m = await signInAnonymously();
         p(
             '$heartGreen $heartGreen $heartGreen user signed in with signInAnonymously');
@@ -47,12 +48,12 @@ class DataService {
     try {
       p('$appleGreen $appleGreen Firebase signInAnonymously started ...');
       var cred = await FirebaseAuth.instance.signInAnonymously();
-      p('$redDot Signed in anonymously, $heartBlue cred:  $cred');
+      p('${Emoji.redDot} Signed in anonymously, $heartBlue cred:  $cred');
       // var m = await getEvents(minutes: 120);
       // p('$heartOrange events after signin: ${m.length}');
       return cred;
     } catch (e) {
-      p('$redDot Unable to sign in: $e');
+      p('${Emoji.redDot} Unable to sign in: $e');
     }
   }
 
@@ -63,7 +64,7 @@ class DataService {
           email: email, password: password);
       return cred;
     } catch (e) {
-      p('$redDot Unable to sign in');
+      p('${Emoji.redDot} Unable to sign in');
     }
   }
 
@@ -71,7 +72,7 @@ class DataService {
     try {
       await FirebaseAuth.instance.signOut();
     } catch (e) {
-      p('$redDot Unable to sign OUT');
+      p('${Emoji.redDot} Unable to sign OUT');
     }
   }
 
@@ -83,7 +84,7 @@ class DataService {
         var cred = await signIn(email: email, password: pass);
         p('User signed in $cred');
       } else {
-        var msg = '$redDot $redDot Email and password not found in prefs';
+        var msg = '${Emoji.redDot} ${Emoji.redDot} Email and password not found in prefs';
         p(msg);
         return msg;
       }
@@ -110,17 +111,17 @@ class DataService {
       return email;
     } catch (e) {
       p(e);
-      p('$redDot $redDot Error creating User $e');
-      throw Exception('$redDot User could not be created: $e');
+      p('${Emoji.redDot} ${Emoji.redDot} Error creating User $e');
+      throw Exception('${Emoji.redDot} User could not be created: $e');
     }
   }
 
-  static Future<List<Event>> getEvents({required int minutes}) async {
+  static Future<List<Event>> getEvents({required int minutesAgo}) async {
     p(
-        '$blueDot $blueDot .... DataService getting Events in the last $minutes minutes from Firestore ..');
+        '$blueDot $blueDot .... DataService getting Events in the last $minutesAgo minutes from Firestore ..');
     var db = FirebaseFirestore.instance;
     var list = <Event>[];
-    var date = DateTime.now().subtract(Duration(minutes: minutes));
+    var date = DateTime.now().subtract(Duration(minutes: minutesAgo));
     var data =
     await db.collection("events")
         .where("longDate", isGreaterThanOrEqualTo: date.millisecondsSinceEpoch)
@@ -136,12 +137,12 @@ class DataService {
   }
 
   static Future<List<Event>> getCityEvents(
-      {required String cityId, required int minutes}) async {
+      {required String cityId, required int minutesAgo}) async {
     p('$blueDot $blueDot .... DataService getting City Events '
-        'in the last $minutes minutes from Firestore ..');
+        'in the last $minutesAgo minutes from Firestore ..');
     var db = FirebaseFirestore.instance;
     var list = <Event>[];
-    var date = DateTime.now().subtract(Duration(minutes: minutes));
+    var date = DateTime.now().subtract(Duration(minutes: minutesAgo));
     var data =
     await db.collection("events")
         .where('cityId', isEqualTo: cityId)
@@ -155,6 +156,7 @@ class DataService {
     }
     p('$leaf $leaf $leaf Found ${list.length} '
         'city events on Firestore $leaf ${DateTime.now()}');
+    await hiveUtil.addEvents(events: list);
     return list;
   }
 
@@ -174,7 +176,8 @@ class DataService {
       list.add(event);
     }
     p('$leaf $leaf $leaf Found ${list.length} '
-        'city places on Firestore $leaf ${DateTime.now()}');
+        'city places on Firestore $leaf ${DateTime.now()}, will cache on Hive');
+    await hiveUtil.addPlaces(places: list);
     return list;
   }
 
@@ -191,6 +194,7 @@ class DataService {
     }
     p('$leaf $leaf $leaf Found ${list
         .length} cities on Firestore $leaf ${DateTime.now()}');
+    await hiveUtil.addCities(cities: list);
     return list;
   }
 
@@ -207,10 +211,10 @@ class DataService {
       city = City.fromJson(mJson);
     }
     if (city != null) {
-      p('$leaf $leaf $redDot Found city ${city
-          .city} on Firestore $redDot ${DateTime
+      p('$leaf $leaf ${Emoji.redDot} Found city ${city
+          .city} on Firestore ${Emoji.redDot} ${DateTime
           .now()}');
-      p(city.toJson());
+      await hiveUtil.addCities(cities: [city]);
     }
     return city;
   }
@@ -224,34 +228,6 @@ class DataService {
     p('$heartBlue $heartBlue  $heartBlue There are ${m
         .count} events in the Firestore collection  $heartBlue');
     return m.count;
-  }
-
-  static Future<void> updateCityCount(
-      DocumentReference feedbackRef, int good, int bad, String docId) async {
-    var db = FirebaseFirestore.instance;
-
-    var postRef =
-    db.collection("eventCityCounts").doc(docId);
-
-    await db.runTransaction((transaction) async {
-      await transaction.get(postRef).then((res) async {
-        if (!res.exists) {
-          throw PlatformException(
-            code: '400',
-            message: "Could not find eventCount post for the feedback.",
-          );
-        }
-
-        // var goodCount = res.data['good'] + good;
-        // var badCount = res.data['bad'] + bad;
-
-        transaction.update(postRef, {
-          'eventCount': 120000,
-          'longDate': 989767765,
-          'totalSpent': 87686
-        });
-      });
-    });
   }
 
   static Future<EventBag> getPaginatedEvents({
@@ -303,7 +279,6 @@ class DataService {
 
     return bag;
   }
-
 }
 
 class EventBag {

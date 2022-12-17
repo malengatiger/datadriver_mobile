@@ -22,7 +22,7 @@ import '../repositories/event_repository.dart';
 // });
 
 final myEventsFutureProvider = FutureProvider((ref) async {
-  p('$redDot $redDot myEventsFutureProvider about to call getEventsWithinMinutes ...');
+  p('${Emoji.redDot} ${Emoji.redDot} myEventsFutureProvider about to call getEventsWithinMinutes ...');
   return ref.watch(dataProvider).getEventsWithinMinutes(minutes: minutesAgo);
 });
 final myCitiesCountFutureProvider = FutureProvider((ref) async {
@@ -44,5 +44,10 @@ final myUsersCountFutureProvider = FutureProvider((ref) async {
 //   p('${Emoji.brocolli} inside myCityEventGeneratorProvider ... cityId ${params.cityId}');
 //   return ref.watch(apiProvider).generateEventsByCity(cityId: params.cityId, count: params.count);
 // });
+//
+const myVar = 0;
+//
+//todo - find a more elegant way of handling these crucial parameters
 
 var minutesAgo = 120;  //4 hours
+var daysAgo = 2;

@@ -102,9 +102,9 @@ class DataRepository implements AbstractDataRepository {
       p('$leaf $leaf $leaf Counted $count cities on Firestore $leaf ${DateTime
           .now()}');
     } catch (e) {
-      p('$redDot $redDot $redDot');
+      p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot}');
       p(e);
-      p('$redDot $redDot $redDot');
+      p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot}');
     }
     return count;
   }

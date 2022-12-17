@@ -79,7 +79,8 @@ const TYPE_MESSAGE = 0,
     TYPE_CITY = 1,
     TYPE_PLACE = 2,
     TYPE_EVENT = 3,
-    TYPE_AGGREGATES = 4, TYPE_DASHBOARDS = 5;
+    TYPE_AGGREGATES = 4,
+    TYPE_DASHBOARDS = 5;
 const STATUS_BUSY = 201, STATUS_DONE = 200, STATUS_ERROR = 500;
 
 class CacheService {
@@ -202,7 +203,7 @@ class CacheService {
         elapsedSeconds: elapsed,
         type: TYPE_PLACE);
 
-    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${places.length} places via sendPort: ${params.city!.city}\n');
+    p('${Emoji.leaf}${Emoji.leaf} CacheService: returning ${places.length} places via sendPort: ${params.city!.city}\n');
     sendPort.send(msg.toJson());
     msg = CacheMessage(
         message:
@@ -245,13 +246,16 @@ class CacheService {
     sendPort.send(msg.toJson());
     //send aggregates message
     mStart = DateTime.now().millisecondsSinceEpoch;
-    var m = _cacheAggregates(cityId: params.city!.id!, url: params.url, cityName: params.city!.city!);
+    var m = _cacheAggregates(
+        cityId: params.city!.id!,
+        url: params.url,
+        cityName: params.city!.city!);
     mEnd = DateTime.now().millisecondsSinceEpoch;
     elapsed = (mEnd - mStart) / 1000;
     jsonTags = jsonEncode(events);
     msg = CacheMessage(
         message:
-        '💙${params.city!.city!} ${numberFormat.format(events.length)} aggregates',
+            '💙${params.city!.city!} ${numberFormat.format(events.length)} aggregates',
         statusCode: STATUS_BUSY,
         date: DateTime.now().toIso8601String(),
         aggregates: jsonTags,
@@ -358,24 +362,30 @@ class CacheService {
       required String url,
       required int daysAgo}) async {
     var mStart = DateTime.now().millisecondsSinceEpoch;
-    var events = await _getCityEvents(
-        cityId: cityId,
-        minutes: (24 * 60 * daysAgo), //3 days worth of events
-        url: url);
-    var mEnd = DateTime.now().millisecondsSinceEpoch;
-    double elapsed = (mEnd - mStart) / 1000;
-    String jsonTags = jsonEncode(events);
-    var msg = CacheMessage(
-        message: '$cityName events cached',
-        statusCode: STATUS_BUSY,
-        events: jsonTags,
-        date: DateTime.now().toIso8601String(),
-        elapsedSeconds: elapsed,
-        type: TYPE_EVENT);
+    try {
+      var events = await _getCityEvents(
+          cityId: cityId,
+          minutes: (24 * 60 * daysAgo), //3 days worth of events
+          url: url);
+      var mEnd = DateTime.now().millisecondsSinceEpoch;
+      double elapsed = (mEnd - mStart) / 1000;
+      String jsonTags = jsonEncode(events);
+      var msg = CacheMessage(
+          message: '$cityName events cached',
+          statusCode: STATUS_BUSY,
+          events: jsonTags,
+          date: DateTime.now().toIso8601String(),
+          elapsedSeconds: elapsed,
+          type: TYPE_EVENT);
 
-    p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${events.length} events via sendPort: $cityName\n');
-    sendPort.send(msg.toJson());
-    return events.length;
+      p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${events.length} events via sendPort: $cityName\n');
+      sendPort.send(msg.toJson());
+      return events.length;
+    } catch (e) {
+      p('${Emoji.redDot}${Emoji.redDot}${Emoji.redDot} '
+          'We may have a problem with city events query: $e');
+    }
+    return 0;
   }
 
   Future<int> _cacheDashboards(
@@ -425,13 +435,13 @@ class CacheService {
         Iterable l = json.decode(response.body);
         cities = List<City>.from(l.map((model) => City.fromJson(model)));
       } else {
-        p('$redDot Error Response status code: ${response.statusCode}');
+        p('${Emoji.redDot} Error Response status code: ${response.statusCode}');
         throw Exception(
-            '$redDot $redDot $redDot Server could not handle request: ${response.body}');
+            '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
-      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
+      p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Things got a little fucked up! $blueDot error: $e');
+      throw Exception('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Network screwed up! $e');
     }
     return cities;
   }
@@ -468,13 +478,13 @@ class CacheService {
           }
         }
       } else {
-        p('$redDot Error Response status code: ${response.statusCode}');
+        p('${Emoji.redDot} Error Response status code: ${response.statusCode}');
         throw Exception(
-            '$redDot $redDot $redDot Server could not handle request: ${response.body}');
+            '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
-      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
+      p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Things got a little fucked up! $blueDot error: $e');
+      throw Exception('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Network screwed up! $e');
     }
     return filteredCityPlaces;
   }
@@ -506,13 +516,13 @@ class CacheService {
         aggregates = List<CityAggregate>.from(
             jsonIterable.map((model) => CityAggregate.fromJson(model)));
       } else {
-        p('$redDot Error Response status code: ${response.statusCode}');
+        p('${Emoji.redDot} Error Response status code: ${response.statusCode}');
         throw Exception(
-            '$redDot $redDot $redDot Server could not handle request: ${response.body}');
+            '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
-      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
+      p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Things got a little fucked up! $blueDot error: $e');
+      throw Exception('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Network screwed up! $e');
     }
     return aggregates;
   }
@@ -544,13 +554,13 @@ class CacheService {
         Iterable l = json.decode(response.body);
         events = List<Event>.from(l.map((model) => Event.fromJson(model)));
       } else {
-        p('$redDot Error Response status code: ${response.statusCode}');
+        p('${Emoji.redDot} Error Response status code: ${response.statusCode}');
         throw Exception(
-            '$redDot $redDot $redDot Server could not handle request: ${response.body}');
+            '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
-      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
+      p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Things got a little fucked up! $blueDot error: $e');
+      throw Exception('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Network screwed up! $e');
     }
     return events;
   }
@@ -581,13 +591,13 @@ class CacheService {
         dashboards = List<DashboardData>.from(
             l.map((model) => DashboardData.fromJson(model)));
       } else {
-        p('$redDot Error Response status code: ${response.statusCode}');
+        p('${Emoji.redDot} Error Response status code: ${response.statusCode}');
         throw Exception(
-            '$redDot $redDot $redDot Server could not handle request: ${response.body}');
+            '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
-      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
+      p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Things got a little fucked up! $blueDot error: $e');
+      throw Exception('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Network screwed up! $e');
     }
     return dashboards;
   }

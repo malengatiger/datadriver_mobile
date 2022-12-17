@@ -51,7 +51,7 @@ class TimeChooserState extends State<TimeChooser> {
                   const Text('Minutes'),
                   const SizedBox(width: 48,),
                   ElevatedButton(onPressed: () {
-                    p('Button Pressed: slider value ${sliderValue.toInt()} sent back $redDot');
+                    p('Button Pressed: slider value ${sliderValue.toInt()} sent back ${Emoji.redDot}');
                     minutesAgo = sliderValue.toInt();
                     widget.onSelected(sliderValue);
                   }, child: const Text('Done')),
@@ -65,12 +65,12 @@ class TimeChooserState extends State<TimeChooser> {
   }
 
   void onChanged(double value) {
-    //p('onChanged: slider value is $value minutes $redDot');
+    //p('onChanged: slider value is $value minutes ${Emoji.redDot}');
     sliderValue = value;
   }
 
   void onChangedEnd(double value) {
-    p('onChangedEnd: slider value is ${value.toInt()} minutes $redDot');
+    p('onChangedEnd: slider value is ${value.toInt()} minutes ${Emoji.redDot}');
     sliderValue = value;
     setState(() {
 

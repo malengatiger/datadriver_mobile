@@ -19,8 +19,8 @@ class _HomeDesktopState extends State<HomeDesktop> {
   var events = <Event>[];
 
   getEvents() async {
-    events = await DataService.getEvents(minutes: minutesAgo);
-    p('${events.length} events $minutesAgo minutes found from Firestore $redDot');
+    events = await DataService.getEvents(minutesAgo: minutesAgo);
+    p('${events.length} events $minutesAgo minutes found from Firestore ${Emoji.redDot}');
   }
 
   navigateToAbout() {

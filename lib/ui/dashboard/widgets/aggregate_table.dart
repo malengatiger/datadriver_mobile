@@ -128,17 +128,17 @@ class _CityAggregateTableState extends State<CityAggregateTable> {
             ],
             rows: rows,
             onTapRow: (rows, index) {
-              p('$redDot onTapRow(): index = $index, row = ${rows[index]}');
+              p('${Emoji.redDot} onTapRow(): index = $index, row = ${rows[index]}');
               widget.onSelected(widget.aggregates.elementAt(index));
             },
             primaryKeyName: 'cityId',
           ),
           horizontalMargin: 100,
           onPageChanged: (offset) {
-            p('$redDot onPageChanged(): offset = $offset');
+            p('${Emoji.redDot} onPageChanged(): offset = $offset');
           },
           onRowsPerPageChanged: (rowsPerPage) {
-            p('$redDot onRowsPerPageChanged(): rowsPerPage = $rowsPerPage');
+            p('${Emoji.redDot} onRowsPerPageChanged(): rowsPerPage = $rowsPerPage');
           },
           rowsPerPage: 20,
         ),

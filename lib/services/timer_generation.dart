@@ -66,13 +66,13 @@ class TimerGeneration {
         // mIterable.map((e) => p(e));
         cities = List<City>.from(mIterable.map((model) => City.fromJson(model)));
       } else {
-        p('$redDot Error Response status code: ${response.statusCode}');
+        p('${Emoji.redDot} Error Response status code: ${response.statusCode}');
         throw Exception(
-            '$redDot $redDot $redDot Server could not handle request: ${response.body}');
+            '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     // } catch (e) {
-    //   p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
-    //   throw Exception('$redDot $redDot $redDot Network screwed up! $e');
+    //   p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Things got a little fucked up! $blueDot error: $e');
+    //   throw Exception('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Network screwed up! $e');
     // }
     return cities;
   }
@@ -101,13 +101,13 @@ class TimerGeneration {
         var msg = GenerationMessage.fromJson(jsonDecode(body));
         return msg;
       } else {
-        p('$redDot Error Response status code: ${response.statusCode}');
+        p('${Emoji.redDot} Error Response status code: ${response.statusCode}');
         throw Exception(
-            '$redDot $redDot $redDot Server could not handle request: ${response.body}');
+            '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      p('$redDot $redDot $redDot Things got a little fucked up! $blueDot error: $e');
-      throw Exception('$redDot $redDot $redDot Network screwed up! $e');
+      p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Things got a little fucked up! $blueDot error: $e');
+      throw Exception('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Network screwed up! $e');
     }
   }
 
@@ -215,6 +215,6 @@ class TimerGeneration {
         cityName: '',
         events: 0);
     
-    p('$redDot $redDot $redDot TimerGeneration: Timer cancelled, generation stopped');
+    p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} TimerGeneration: Timer cancelled, generation stopped');
   }
 }

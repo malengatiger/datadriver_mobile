@@ -82,7 +82,7 @@ class AggregatesMapState extends State<AggregatesMap>
 
   Future<void> _putAggregateMarkersOnMap() async {
     if (googleMapController == null) {
-      p('$diamond $diamond AggregatesMap: ... googleMapController is null $redDot');
+      p('$diamond $diamond AggregatesMap: ... googleMapController is null ${Emoji.redDot}');
       return;
     }
     p('$diamond $diamond AggregatesMap: ... putting aggregate markers on map, '
@@ -97,7 +97,7 @@ class AggregatesMapState extends State<AggregatesMap>
         infoWindow: InfoWindow(
             title: agg.cityName,
             onTap: () {
-              p('tapped ${agg.cityName} $redDot $redDot in InfoWindow');
+              p('tapped ${agg.cityName} ${Emoji.redDot} ${Emoji.redDot} in InfoWindow');
               _showCityAggregateCard(agg);
             }),
       );

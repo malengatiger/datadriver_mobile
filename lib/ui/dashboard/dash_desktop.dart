@@ -43,7 +43,7 @@ class DashDesktopState extends State<DashDesktop>
   }
 
   void _getDashboardData() async {
-    p('$redDot $redDot getting dashboard data .............');
+    p('${Emoji.redDot} ${Emoji.redDot} getting dashboard data .............');
     setState(() {
       isLoading = true;
     });
@@ -53,7 +53,7 @@ class DashDesktopState extends State<DashDesktop>
         dashData = dashboards.first;
       }
     } catch (e) {
-      p('$redDot get data failed');
+      p('${Emoji.redDot} get data failed');
       var em = EmojiAlert(
         emojiType: EMOJI_TYPE.ANGRY,
         description: Text('$e'),
@@ -117,7 +117,7 @@ class DashDesktopState extends State<DashDesktop>
         break;
       case 1:
         return  AggregatePage(onSelected: (agg) {
-          p('$redDot $redDot navigating to city map: ${agg.cityName}');
+          p('${Emoji.redDot} ${Emoji.redDot} navigating to city map: ${agg.cityName}');
           navigateToCityMap(context: context, aggregate: agg);
         },);
         break;

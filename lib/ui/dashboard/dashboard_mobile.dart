@@ -69,7 +69,7 @@ class DashboardMobileState extends State<DashboardMobile>
           isGenerating = false;
           showGenerator = false;
           setState(() {});
-          _getDashboardData();
+          _getDashboardDataFromRemote();
         } else {
           _processTimerMessage(message);
           setState(() {});
@@ -83,7 +83,7 @@ class DashboardMobileState extends State<DashboardMobile>
         setState(() {
           isGenerating = false;
         });
-        _getDashboardDataQuietly();
+        _getDashboardDataFromRemote();
       }
     });
   }
@@ -121,26 +121,29 @@ class DashboardMobileState extends State<DashboardMobile>
   }
 
   void _getLocalData() async {
-    p('$redDot $redDot ...getting dashboard data from hive.............');
+    p('${Emoji.brocolli}${Emoji.brocolli}${Emoji.brocolli}'
+        ' _getLocalData: ... getting latest dashboard data from hive.............');
     setState(() {
       isLoading = true;
     });
     _animationController.reverse();
-
     try {
-      p('${Emoji.brocolli} ... getting DashboardData from hive');
-      dashData = await hiveUtil.getLastDashboardData();
+      dashData = await hiveUtil.getLatestDashboardData();
       if (dashData != null) {
-        setState(() {
-          dashboardCreatedDate = DateTime.parse(dashData!.date);
-          isLoading = false;
-        });
-        //_getDashboardDataQuietly();
+        if (mounted) {
+          setState(() {
+            dashboardCreatedDate = DateTime.parse(dashData!.date);
+            isLoading = false;
+          });
+          _animationController.forward();
+        }
       } else {
-        _getDashboardData();
+        p('dashData is null, so getting it from remote');
+        _getDashboardDataFromRemote();
       }
-      _animationController.forward();
+
     } catch (e) {
+      p(e);
       if (mounted) {
         setState(() {
           isGenerating = false;
@@ -161,18 +164,16 @@ class DashboardMobileState extends State<DashboardMobile>
     }
   }
 
-  void _getDashboardData() async {
-    p('$redDot $redDot ... getting dashboard data .............');
+  void _getDashboardDataFromRemote() async {
+    p('${Emoji.redDot}${Emoji.redDot}${Emoji.redDot} _getDashboardDataFromRemote: getting dashboard data from remote .............');
     if (mounted) {
       setState(() {
-        isLoading = true;
+        showGenerator = true;
       });
       _animationController.reverse();
     }
 
     try {
-      p('${Emoji.brocolli} ... getting DashboardData from remote');
-
       dashboards = await apiService.getDashboardData(minutesAgo: minutesAgo);
       if (dashboards.isNotEmpty) {
         dashData = dashboards.first;
@@ -180,20 +181,23 @@ class DashboardMobileState extends State<DashboardMobile>
           await hiveUtil.addDashboardData(data: d);
 
         }
-        dashData!.date = DateTime.now().toIso8601String();
         dashboardCreatedDate = DateTime.parse(dashData!.date);
-        setState(() {
-          isLoading = false;
-          dashboardCreatedDate = DateTime.parse(dashData!.date).toLocal();
-        });
-        _animationController.forward();
+        if (mounted) {
+          setState(() {
+            showGenerator = false;
+          });
+          _animationController.forward();
+        }
       }
 
     } catch (e) {
-      setState(() {
-        isLoading = false;
-        date = DateTime.now().toLocal();
-      });
+      p(e);
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          date = DateTime.now().toLocal();
+        });
+      }
       var ding = EmojiAlert(
         emojiSize: 32,
         alertTitle: const Text('DataDriver+'),
@@ -211,72 +215,78 @@ class DashboardMobileState extends State<DashboardMobile>
 
 
   DateTime? date;
-  void _getDashboardDataQuietly() async {
-    p('$redDot $redDot ... getting dashboard data QUIETLY .............');
-
-    setState(() {
-      showGenerator = true;
-    });
-    try {
-      p('${Emoji.brocolli} ... getting DashboardData from remote');
-      dashboards = await apiService.getDashboardData(minutesAgo: minutesAgo);
-      if (dashboards.isNotEmpty) {
-        dashData = dashboards.first;
-        dashData!.date = DateTime.now().toIso8601String();
-        dashboardCreatedDate = DateTime.parse(dashData!.date);
-        for (var d in dashboards) {
-          await hiveUtil.addDashboardData(data: d);
-
-        }
-        setState(() {
-          showGenerator = false;
-        });
-        _animationController.forward();
-
-      }
-
-    } catch (e) {
-      if (mounted) {
-        p('......... ${Emoji.blueDot} setting state on Error! ....');
-        setState(() {
-          isGenerating = false;
-        });
-        p('......... ${Emoji.blueDot} starting Future.delayed for 500 ms ....');
-        Future.delayed(const Duration(milliseconds: 500)).then((value) {
-          var height = 0.0;
-          if ('$e'.length > 500) {
-            height = 360;
-          } else {
-            height = 300;
-          }
-          var ding = EmojiAlert(
-            emojiSize: 32,
-            alertTitle: const Text('DataDriver+'),
-            background: Theme
-                .of(context)
-                .backgroundColor,
-            height: height,
-            emojiType: EMOJI_TYPE.CONFUSED,
-            description: Text(
-              '$e',
-              style: const TextStyle(fontSize: 11),
-            ),
-          );
-          ding.displayAlert(context);
-        });
-      }
-    }
-  }
+  // void _getDashboardDataQuietly() async {
+  //   p('${Emoji.redDot} ${Emoji.redDot} ... getting dashboard data QUIETLY .............');
+  //
+  //   if (mounted) {
+  //     setState(() {
+  //       showGenerator = true;
+  //     });
+  //   }
+  //   try {
+  //     p('${Emoji.brocolli} ... getting DashboardData from remote');
+  //     dashboards = await apiService.getDashboardData(minutesAgo: minutesAgo);
+  //     if (dashboards.isNotEmpty) {
+  //       dashData = dashboards.first;
+  //       dashboardCreatedDate = DateTime.parse(dashData!.date);
+  //       for (var d in dashboards) {
+  //         await hiveUtil.addDashboardData(data: d);
+  //       }
+  //       if (mounted) {
+  //         setState(() {
+  //           showGenerator = false;
+  //         });
+  //         _animationController.forward();
+  //       }
+  //
+  //     }
+  //
+  //   } catch (e) {
+  //     if (mounted) {
+  //       p('......... ${Emoji.blueDot} setting state on Error! ....');
+  //       setState(() {
+  //         isGenerating = false;
+  //       });
+  //       p('......... ${Emoji.blueDot} starting Future.delayed for 500 ms ....');
+  //       Future.delayed(const Duration(milliseconds: 500)).then((value) {
+  //         var height = 0.0;
+  //         if ('$e'.length > 500) {
+  //           height = 360;
+  //         } else {
+  //           height = 300;
+  //         }
+  //         var ding = EmojiAlert(
+  //           emojiSize: 32,
+  //           alertTitle: const Text('DataDriver+'),
+  //           background: Theme
+  //               .of(context)
+  //               .backgroundColor,
+  //           height: height,
+  //           emojiType: EMOJI_TYPE.CONFUSED,
+  //           description: Text(
+  //             '$e',
+  //             style: const TextStyle(fontSize: 11),
+  //           ),
+  //         );
+  //         ding.displayAlert(context);
+  //       });
+  //     }
+  //   }
+  // }
 
   bool showTimeChooser = false;
 
   @override
   Widget build(BuildContext context) {
+    var brightness = MediaQuery.of(context).platformBrightness;
+    bool isDarkMode = brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-          title: const Text(
+          title: Text(
             'DataDriver+',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            style: TextStyle(fontSize: 16,
+                color: isDarkMode?Colors.white38:Colors.black38,
+                fontWeight: FontWeight.w900),
           ),
           backgroundColor: Theme.of(context).secondaryHeaderColor,
           bottom: PreferredSize(
@@ -330,7 +340,7 @@ class DashboardMobileState extends State<DashboardMobile>
             ),
             IconButton(
                 onPressed: () {
-                  _getDashboardDataQuietly();
+                  _getDashboardDataFromRemote();
                 },
                 icon: const Icon(
                   Icons.refresh,
@@ -503,6 +513,6 @@ class DashboardMobileState extends State<DashboardMobile>
     setState(() {
       showTimeChooser = false;
     });
-    _getDashboardData();
+    _getDashboardDataFromRemote();
   }
 }

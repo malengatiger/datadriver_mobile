@@ -66,7 +66,7 @@ class CitiesMapState extends State<CitiesMap> {
 
   Future<void> _putCityMarkersOnMap() async {
     if (googleMapController == null) {
-      p('$diamond $diamond CitiesMap: ... googleMapController is null $redDot');
+      p('$diamond $diamond CitiesMap: ... googleMapController is null ${Emoji.redDot}');
       return;
     }
     p('$diamond $diamond CitiesMap: ... putting city markers on map, '
@@ -81,7 +81,7 @@ class CitiesMapState extends State<CitiesMap> {
         infoWindow: InfoWindow(
             title: city.city,
             onTap: () {
-              p('tapped ${city.city} $redDot $redDot in InfoWindow');
+              p('tapped ${city.city} ${Emoji.redDot} ${Emoji.redDot} in InfoWindow');
               _showCityCard(city);
             }),
       );

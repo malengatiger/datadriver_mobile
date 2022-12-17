@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:stream_channel/isolate_channel.dart';
+import 'package:universal_frontend/services/api_service.dart';
 import 'package:universal_frontend/services/timer_generation.dart';
 
 import '../../data_models/city.dart';
@@ -13,6 +14,7 @@ import '../../services/data_service.dart';
 import '../../services/generation_monitor.dart';
 import '../../utils/emojis.dart';
 import '../../utils/hive_util.dart';
+import '../../utils/providers.dart';
 import '../../utils/util.dart';
 
 class GenerationPage extends StatefulWidget {
@@ -185,7 +187,7 @@ class GenerationPageState extends State<GenerationPage>
                               const SizedBox(
                                 height: 32,
                               ),
-                              TextFormField(
+                              selectedCity == null?TextFormField(
                                 controller: _intervalController,
                                 keyboardType:
                                     const TextInputType.numberWithOptions(),
@@ -205,7 +207,7 @@ class GenerationPageState extends State<GenerationPage>
                                   }
                                   return null;
                                 },
-                              ),
+                              ): const SizedBox(height: 0,),
                               const SizedBox(
                                 height: 16,
                               ),
@@ -474,7 +476,7 @@ class GenerationPageState extends State<GenerationPage>
       //create channel for comms
       IsolateChannel channel =
           IsolateChannel(receivePort, receivePort.sendPort);
-      channel.stream.listen((data) {
+      channel.stream.listen((data) async {
         p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received msg: $data');
         if (data != null) {
           if (data is String) {
@@ -488,11 +490,16 @@ class GenerationPageState extends State<GenerationPage>
           } else {
             var msg = TimerMessage.fromJson(data);
             processTimerMessage(msg);
-            generationMonitor.addMessage(msg);
+
             if (msg.statusCode == FINISHED) {
               isolate.kill();
               p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji.redDot} isolate has been killed!');
+              p('${Emoji.blueDot} creating new dashboard data ....');
+              var dash = await apiService.addDashboardData(minutesAgo: minutesAgo);
+              p('${Emoji.blueDot} dashboard just created: ${Emoji.blueDot} '
+                  '${dash.toJson()} ${Emoji.blueDot}');
             }
+            generationMonitor.addMessage(msg);
           }
         } else {
           sendFinishedMessage();
@@ -526,7 +533,8 @@ class GenerationPageState extends State<GenerationPage>
     // });
   }
 
-  void sendFinishedMessage() {
+  var apiService = ApiService();
+  void sendFinishedMessage() async {
     var msg = TimerMessage(
         date: DateTime.now().toIso8601String(),
         message: 'Generation stopped',
@@ -538,6 +546,7 @@ class GenerationPageState extends State<GenerationPage>
         selectedCity = null;
       });
     }
+
   }
 
   void onChanged(City? value) {

@@ -32,6 +32,8 @@ class AggregatePage extends StatefulWidget {
 class AggregatePageState extends State<AggregatePage>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
+  ScrollController listScrollController = ScrollController();
+
   var aggregates = <CityAggregate>[];
   final apiService = ApiService();
   var isLoading = false;
@@ -54,7 +56,7 @@ class AggregatePageState extends State<AggregatePage>
         });
       });
     super.initState();
-    p('.... initState inside AggregatePage $redDot');
+    p('.... initState inside AggregatePage ${Emoji.redDot}');
     _getLocalData();
   }
   CityAggregate? firstAggregate;
@@ -65,7 +67,7 @@ class AggregatePageState extends State<AggregatePage>
     });
     // _animationController.reverse();
     try {
-      aggregates = (await hiveUtil.getLastAggregates())!;
+      aggregates = (await hiveUtil.getLatestAggregates())!;
       p('${Emoji.brocolli} ... last aggregates found in hive cache: '
           '${aggregates.length}.');
 
@@ -210,21 +212,35 @@ class AggregatePageState extends State<AggregatePage>
   }
 
   _sortByAmount() {
-    p('$redDot sorting aggregates by totalSpent');
+    p('${Emoji.redDot} sorting aggregates by totalSpent');
     aggregates.sort((a, b) => b.totalSpent.compareTo(a.totalSpent));
     setState(() {});
+    _scrollToTop();
   }
 
   _sortByRating() {
-    p('$redDot sorting aggregates by rating');
+    p('${Emoji.redDot} sorting aggregates by rating');
     aggregates.sort((a, b) => b.averageRating.compareTo(a.averageRating));
     setState(() {});
+    _scrollToTop();
   }
 
   _sortByName() {
-    p('$redDot sorting aggregates by cityName');
+    p('${Emoji.redDot} sorting aggregates by cityName');
     aggregates.sort((a, b) => a.cityName.compareTo(b.cityName));
     setState(() {});
+    _scrollToTop();
+  }
+
+  void _scrollToTop() {
+    if (listScrollController.hasClients) {
+      final position = listScrollController.position.minScrollExtent;
+      listScrollController.animateTo(
+        position,
+        duration: const Duration(seconds: 1),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -526,6 +542,7 @@ class AggregatePageState extends State<AggregatePage>
                                               ),
                                               child: ListView.builder(
                                                   itemCount: aggregates.length,
+                                                  controller: listScrollController,
                                                   itemBuilder:
                                                       (context, index) {
                                                     var agg = aggregates
@@ -540,14 +557,14 @@ class AggregatePageState extends State<AggregatePage>
                                                         elevation: 8,
                                                         // color: Colors.brown[50],
                                                         onSelected: (value) {
-                                                          p('$redDot PopupMenuButton: onSelected: $value');
+                                                          p('${Emoji.redDot} PopupMenuButton: onSelected: $value');
                                                         },
                                                         itemBuilder: (context) {
                                                           return [
                                                             PopupMenuItem(
                                                               value: 'goToMap',
                                                               onTap: () {
-                                                                p('$redDot PopupMenuItem: city menu item tapped, goToMap: ${agg.cityName}');
+                                                                p('${Emoji.redDot} PopupMenuItem: city menu item tapped, goToMap: ${agg.cityName}');
                                                                 navigateToCityMap(
                                                                     agg: agg);
                                                               },
@@ -566,7 +583,7 @@ class AggregatePageState extends State<AggregatePage>
                                                               value:
                                                                   'sortByAmount',
                                                               onTap: () {
-                                                                p('$redDot PopupMenuItem: Sort By Amount tapped');
+                                                                p('${Emoji.redDot} PopupMenuItem: Sort By Amount tapped');
                                                                 _sortByAmount();
                                                               },
                                                               child: ListTile(
@@ -584,7 +601,7 @@ class AggregatePageState extends State<AggregatePage>
                                                               value:
                                                                   'sortByName',
                                                               onTap: () {
-                                                                p('$redDot PopupMenuItem: Sort By Name tapped');
+                                                                p('${Emoji.redDot} PopupMenuItem: Sort By Name tapped');
                                                                 _sortByName();
                                                               },
                                                               child: ListTile(
@@ -602,7 +619,7 @@ class AggregatePageState extends State<AggregatePage>
                                                               value:
                                                                   'sortByRating',
                                                               onTap: () {
-                                                                p('$redDot PopupMenuItem: Sort By Rating tapped');
+                                                                p('${Emoji.redDot} PopupMenuItem: Sort By Rating tapped');
                                                                 _sortByRating();
                                                               },
                                                               child: ListTile(

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:isolate';
 
 import 'package:device_preview/device_preview.dart';
@@ -84,13 +85,18 @@ void setup() {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    if (kReleaseMode) exit(1);
+  };
   firebaseApp = await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform);
   p('$heartBlue Firebase App has been initialized: ${firebaseApp.name}');
 
   await dotenv.load(fileName: ".env");
   p('$heartBlue DotEnv has been loaded');
-  setup();
+
+  // setup();
 
   p('${Emoji.brocolli} Checking for current user : FirebaseAuth');
   var user = FirebaseAuth.instance.currentUser;
@@ -101,9 +107,6 @@ Future<void> main() async {
     p('$blueDot User already exists. $blueDot Cool!');
   }
 
-  var list = await hiveUtil.getCities();
-  p('💙💙💙💙💙 ... Cities from Hive cache: ${list.length}');
-
   //_createIsolate();
 
   DataService.listenForAuth();
@@ -111,7 +114,9 @@ Future<void> main() async {
       cityId: '25156118-6aaf-4d5a-9e89-2eef5d58e3c3', days: 10, limit: 100);
   p('🍏🍏🍏 paginated query result: ${res.events.length} events in the page 🍏🍏🍏');
   if (kIsWeb) {
-    p('💙💙💙💙💙 We are running on the web!');
+    p('💙💙💙💙💙💙 We are running on the web!');
+  } else {
+    p('🍊🍊🍊🍊🍊🍊 We are running on something rather than the web!');
   }
   // wrap the entire app with a ProviderScope so that widgets
   // will be able to read providers
@@ -128,20 +133,18 @@ Future<void> main() async {
   } else {
     p('💙💙💙💙💙 We are running on the mobile and no need of DevicePreview...');
     runApp(
-      const ProviderScope(child: MyApp()
-          // Wrap your app
-          ),
+      const ProviderScope(child: MyApp() ),
     );
   }
 
-  runApp(ProviderScope(
-    child: DevicePreview(
-        enabled: !kReleaseMode,
-        builder: (context) {
-          return const MyApp();
-        } // Wrap your app
-        ),
-  ));
+  // runApp(ProviderScope(
+  //   child: DevicePreview(
+  //       enabled: !kReleaseMode,
+  //       builder: (context) {
+  //         return const MyApp();
+  //       } // Wrap your app
+  //       ),
+  // ));
   // var events = await DataService.getEvents(minutes: 30);
   // p('${events.length} events found by  DataService. $heartGreen');
 }
