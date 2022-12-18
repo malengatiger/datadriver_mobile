@@ -41,7 +41,9 @@ class CityAggregate {
   });
 
   CityAggregate.fromJson(Map<String, dynamic> json) {
-    minutesAgo = json['minutesAgo'];
+    if (json['minutesAgo'] != null) {
+      minutesAgo = json['minutesAgo'];
+    }
     if (json['elapsedSeconds'] != null) {
       elapsedSeconds = json['elapsedSeconds'];
     } else {

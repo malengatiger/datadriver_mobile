@@ -93,7 +93,6 @@ class DashboardMobileState extends State<DashboardMobile>
   bool showGenerator = false;
   DateTime? dashboardCreatedDate;
 
-
   void _processTimerMessage(TimerMessage message) {
     if (message.statusCode == FINISHED) {
       p('${Emoji.appleGreen} _processTimerMessage: data generation is done!');
@@ -132,7 +131,7 @@ class DashboardMobileState extends State<DashboardMobile>
       if (dashData != null) {
         if (mounted) {
           setState(() {
-            dashboardCreatedDate = DateTime.parse(dashData!.date);
+            dashboardCreatedDate = DateTime.parse(dashData!.date).toLocal();
             isLoading = false;
           });
           _animationController.forward();
@@ -181,7 +180,7 @@ class DashboardMobileState extends State<DashboardMobile>
           await hiveUtil.addDashboardData(data: d);
 
         }
-        dashboardCreatedDate = DateTime.parse(dashData!.date);
+        dashboardCreatedDate = DateTime.parse(dashData!.date).toLocal();
         if (mounted) {
           setState(() {
             showGenerator = false;

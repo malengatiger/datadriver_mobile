@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:universal_frontend/data_models/cache_config.dart';
 import 'package:universal_frontend/data_models/city.dart';
 import 'package:universal_frontend/data_models/city_aggregate.dart';
 import 'package:universal_frontend/data_models/dashboard_data.dart';
@@ -42,6 +43,7 @@ class HiveUtil {
   CollectionBox<Event>? _eventBox;
   CollectionBox<City>? _cityBox;
   CollectionBox<CityPlace>? _cityPlaceBox;
+  CollectionBox<CacheConfig>? _cacheConfigBox;
   bool _isInitialized = false;
 
   _init() async {
@@ -53,7 +55,7 @@ class HiveUtil {
       try {
         _boxCollection = await BoxCollection.open(
           'DataBoxOneA', // Name of your database
-          {'events', 'aggregates', 'dashboardData', 'cities', 'cityPlaces'},
+          {'events', 'aggregates', 'dashboardData', 'cities', 'cityPlaces', 'cacheConfigs'},
           // Names of your boxes
           path: file
               .path, // Path where to store your boxes (Only used in Flutter / Dart IO)
@@ -95,6 +97,10 @@ class HiveUtil {
         Hive.registerAdapter(LocationAdapter());
         p('${Emoji.peach}${Emoji.peach}${Emoji.peach} Hive locationAdapter registered');
       }
+      if (!Hive.isAdapterRegistered(15)) {
+        Hive.registerAdapter(CacheConfigAdapter());
+        p('${Emoji.peach}${Emoji.peach}${Emoji.peach} Hive cacheConfigAdapter registered');
+      }
 
       p('${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach} Hive box collection created and types registered');
 
@@ -107,6 +113,7 @@ class HiveUtil {
         _eventBox = await _boxCollection!.openBox<Event>('events');
         _cityBox = await _boxCollection!.openBox<City>('cities');
         _cityPlaceBox = await _boxCollection!.openBox<CityPlace>('cityPlaces');
+        _cacheConfigBox = await _boxCollection!.openBox<CacheConfig>('cacheConfigs');
 
         _isInitialized = true;
         p('${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach}'
@@ -116,6 +123,27 @@ class HiveUtil {
       }
     }
   }
+  Future<void> addCacheConfig({required CacheConfig cacheConfig}) async {
+    await _init();
+    var key = '${cacheConfig.longDate}';
+    await _cacheConfigBox!.put(key, cacheConfig);
+    p('${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}'
+        ' CacheConfig ${cacheConfig.stringDate} added to Hive cache');
+  }
+  Future<DashboardData?> getLatestDashboardData() async {
+    await _init();
+    var keys = await _dashboardDataBox!.getAllKeys();
+    p('${Emoji.peach}${Emoji.peach}${Emoji.peach} hive dash keys: ${keys.length}');
+    keys.sort((a, b) => b.compareTo(a)); //sor
+    if (keys.isNotEmpty) {
+      // t descending
+      var data = await _dashboardDataBox!.get(keys[0]);
+      p('${Emoji.peach}${Emoji.peach}${Emoji.peach} Last dashboard data retrieved: ${data?.date}');
+      return data;
+    }
+    return null;
+  }
+
 
   Future<void> addDashboardData({required DashboardData data}) async {
     await _init();
@@ -126,15 +154,13 @@ class HiveUtil {
         ' DashboardData ${data.date} added to Hive cache');
   }
 
-  Future<DashboardData?> getLatestDashboardData() async {
+  Future<CacheConfig?> getLatestCacheConfig() async {
     await _init();
-    var keys = await _dashboardDataBox!.getAllKeys();
-    p('${Emoji.peach}${Emoji.peach}${Emoji.peach} hive dash keys: ${keys.length}');
-    keys.sort((a, b) => b.compareTo(a)); //sor
+    var keys = await _cacheConfigBox!.getAllKeys();
+    keys.sort((a, b) => b.compareTo(a)); //sort desc
     if (keys.isNotEmpty) {
-      // t descending
-      var data = await _dashboardDataBox!.get(keys[0]);
-      p('${Emoji.peach}${Emoji.peach}${Emoji.peach} Last dashboard data retrieved: ${data?.date}');
+      var data = await _cacheConfigBox!.get(keys[0]);
+      p('${Emoji.peach}${Emoji.peach}${Emoji.peach} Last cacheConfig data retrieved: ${data?.stringDate}');
       return data;
     }
     return null;

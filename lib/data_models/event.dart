@@ -1,4 +1,7 @@
 import 'package:hive/hive.dart';
+import 'package:universal_frontend/utils/emojis.dart';
+
+import '../utils/util.dart';
 
 part 'event.g.dart';
 
@@ -60,7 +63,13 @@ class Event {
       required this.userId});
 
   Event.fromJson(Map<String, dynamic> json) {
-    amount = json['amount'];
+    // p(json);
+    if (json['amount'] == null) {
+      p('${Emoji.appleRed} ---------- amount is null, wtf?  cityId: ${json['cityId']} city: ${json['cityName']}');
+      p(json);
+    } else {
+      amount = json['amount'];
+    }
     eventId = json['eventId'];
     cityId = json['cityId'];
     cityName = json['cityName'];

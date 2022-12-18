@@ -496,6 +496,7 @@ class GenerationPageState extends State<GenerationPage>
               p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji.redDot} isolate has been killed!');
               p('${Emoji.blueDot} creating new dashboard data ....');
               var dash = await apiService.addDashboardData(minutesAgo: minutesAgo);
+              apiService.createCityAggregatesForAllCities(minutesAgo: minutesAgo);
               p('${Emoji.blueDot} dashboard just created: ${Emoji.blueDot} '
                   '${dash.toJson()} ${Emoji.blueDot}');
             }

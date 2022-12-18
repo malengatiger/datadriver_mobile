@@ -107,6 +107,7 @@ class AggregatePageState extends State<AggregatePage>
     }
     if (mounted) {
       setState(() {});
+      _scrollToTop();
     }
   }
 
@@ -132,6 +133,7 @@ class AggregatePageState extends State<AggregatePage>
         isLoading = false;
       });
       _animationController.forward();
+      _scrollToTop();
     }
   }
 

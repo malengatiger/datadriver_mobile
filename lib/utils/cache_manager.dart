@@ -14,6 +14,8 @@ import 'package:universal_frontend/services/data_service.dart';
 import 'package:universal_frontend/utils/providers.dart';
 import 'package:universal_frontend/utils/util.dart';
 
+import '../data_models/cache_bag.dart';
+import '../data_models/cache_config.dart';
 import '../data_models/city.dart';
 import '../data_models/city_aggregate.dart';
 import '../data_models/event.dart';
@@ -131,6 +133,32 @@ class CacheManagerState extends State<CacheManager>
     await hiveUtil.addAggregates(aggregates: aggregates);
   }
 
+  void _saveCacheBag(CacheMessage msg) async {
+    p('\n\n${Emoji.appleGreen}${Emoji.appleGreen} CacheManager: save data in Hive ... '
+        '- ${DateTime.now().toIso8601String()}');
+    var start = DateTime.now().millisecondsSinceEpoch;
+
+    Map<String,dynamic> cache = msg.cacheBagJson!;
+    var cacheBag = CacheBag.fromJson(cache);
+    await hiveUtil.addCities(cities: cacheBag.cities);
+    p('${Emoji.diamond} cities added to Hive: ${cacheBag.cities.length}');
+    await hiveUtil.addPlaces(places: cacheBag.places);
+    p('${Emoji.diamond} places added to Hive: ${cacheBag.places.length}');
+    await hiveUtil.addEvents(events: cacheBag.events);
+    p('${Emoji.diamond} events added to Hive: ${cacheBag.events.length}');
+    await hiveUtil.addAggregates(aggregates: cacheBag.aggregates);
+    p('${Emoji.diamond} aggregates added to Hive: ${cacheBag.aggregates.length}');
+    for (var element in cacheBag.dashboards) {
+      await hiveUtil.addDashboardData(data: element);
+    }
+    p('${Emoji.diamond} dashboards added to Hive: ${cacheBag.dashboards.length}');
+    var end = DateTime.now().millisecondsSinceEpoch;
+    var elapsed = double.parse('${(end-start)/1000}');
+    p('\n\n${Emoji.appleGreen}${Emoji.appleGreen} CacheManager: big Hive cache job is complete! elapsed time: $elapsed seconds '
+        '- ${DateTime.now().toIso8601String()}');
+
+  }
+
   void _startCache() async {
     setState(() {
       messages.clear();
@@ -142,15 +170,17 @@ class CacheManagerState extends State<CacheManager>
     _createIsolate(daysAgo: daysAgo);
   }
 
+  double elapsedMinutes = 0.0;
   Future<void> _createIsolate({City? city, required int daysAgo}) async {
     try {
+      _isolateStart = DateTime.now().millisecondsSinceEpoch;
       receivePort = ReceivePort();
       var errorReceivePort = ReceivePort();
       //pass sendPort to the params so isolate can send messages
       // params.sendPort = receivePort.sendPort;
       IsolateChannel channel =
           IsolateChannel(receivePort, receivePort.sendPort);
-      channel.stream.listen((data) {
+      channel.stream.listen((data) async {
         if (data != null) {
           p('${Emoji.heartBlue}${Emoji.heartBlue} '
               'CaheManager: Received cacheService result ${Emoji.appleRed} CacheMessage, '
@@ -165,10 +195,22 @@ class CacheManagerState extends State<CacheManager>
                   p('\n${Emoji.redDot}${Emoji.redDot} '
                       'CacheManager: received end message from CacheService, will remove loading ui '
                       '${Emoji.heartBlue}${Emoji.heartBlue}');
+                  //add cacheConfig
+                  await hiveUtil.addCacheConfig(cacheConfig: CacheConfig(
+                    longDate: DateTime.now().subtract(const Duration(minutes: 15)).millisecondsSinceEpoch,
+                    stringDate: DateTime.now().toIso8601String(),
+                    elapsedSeconds: msg.elapsedSeconds!,));
+
+                } else {
+                  if (msg.statusCode == STATUS_ERROR) {
+                    p("We have an error. Do something!");
+
+                  }
                 }
                 selectedCity = null;
                 setState(() {
                   _isolateEnd = DateTime.now().millisecondsSinceEpoch;
+                  elapsedMinutes = ((_isolateEnd! - _isolateStart)/1000/60);
                 });
                 break;
               case TYPE_CITY:
@@ -185,6 +227,9 @@ class CacheManagerState extends State<CacheManager>
                 break;
               case TYPE_AGGREGATES:
                 _saveAggregates(msg);
+                break;
+              case TYPE_CACHE_BAG:
+                _saveCacheBag(msg);
                 break;
               default:
                 p('${Emoji.redDot}${Emoji.redDot}${Emoji.redDot}${Emoji.redDot}'
@@ -208,11 +253,17 @@ class CacheManagerState extends State<CacheManager>
       if (url == null) {
         throw Exception("CacheManager: Crucial Url parameter missing! 🔴🔴");
       }
+      var config = await hiveUtil.getLatestCacheConfig();
+      if (config == null) {
+        var longDate = DateTime.now().subtract(const Duration(days:2)).millisecondsSinceEpoch;
+        var stringDate = DateTime.now().subtract(const Duration(days:2)).toIso8601String();
+        config = CacheConfig(longDate: longDate, stringDate: stringDate, elapsedSeconds: 0);
+      }
       var params = CacheParameters(
           sendPort: receivePort.sendPort,
           url: url,
-          city: city,
-          daysAgo: daysAgo);
+          cacheConfig: config,
+          city: city, useCacheService: true,);
 
       isolate = await Isolate.spawn<CacheParameters>(heavyTask, params,
           paused: true,
@@ -287,7 +338,9 @@ class CacheManagerState extends State<CacheManager>
                                 textStyle:
                                     Theme.of(context).textTheme.bodySmall,
                                 fontWeight: FontWeight.normal,
-                                fontSize: 12, color: isDarkMode? Colors.white:Colors.black),
+                                fontSize: 12,
+                                color:
+                                    isDarkMode ? Colors.white : Colors.black),
                           ),
                           const SizedBox(
                             width: 16,
@@ -365,11 +418,7 @@ class CacheManagerState extends State<CacheManager>
                                       const SizedBox(
                                         width: 8,
                                       ),
-                                      Text(
-                                          ((_isolateEnd! - _isolateStart) /
-                                                  1000 /
-                                                  60)
-                                              .toStringAsFixed(1),
+                                      Text(elapsedMinutes.toStringAsFixed(2),
                                           style: GoogleFonts.lato(
                                               textStyle: Theme.of(context)
                                                   .textTheme
@@ -446,7 +495,6 @@ class CacheManagerState extends State<CacheManager>
                                         elevation: 2,
                                         child: Row(
                                           children: [
-
                                             SizedBox(
                                               width: 60,
                                               child: Text(
@@ -455,8 +503,7 @@ class CacheManagerState extends State<CacheManager>
                                                     textStyle: Theme.of(context)
                                                         .textTheme
                                                         .bodySmall,
-                                                    fontWeight:
-                                                        FontWeight.w900,
+                                                    fontWeight: FontWeight.w900,
                                                     fontSize: 11),
                                               ),
                                             ),

@@ -1,6 +1,5 @@
 import 'package:hive/hive.dart';
 
-import '../utils/util.dart';
 part 'dashboard_data.g.dart';
 
 @HiveType(typeId: 0)

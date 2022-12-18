@@ -17,6 +17,7 @@ abstract class AbstractApiService {
   Future<List<GenerationMessage>> generateEventsByCities(
       {required List<String> cityIds, required int upperCount});
   Future<DashboardData> addDashboardData({required int minutesAgo});
+  Future<List<CityAggregate>> createCityAggregatesForAllCities({required int minutesAgo});
 }
 
 class ApiService implements AbstractApiService {
@@ -241,6 +242,42 @@ class ApiService implements AbstractApiService {
     var end = DateTime.now().millisecondsSinceEpoch;
     var elapsed = (end - start)/1000;
     p('${Emoji.brocolli} ${Emoji.brocolli} Elapsed time: ${elapsed.toStringAsFixed(2)} seconds for network call');
+  }
+
+  @override
+  Future<List<CityAggregate>> createCityAggregatesForAllCities({required int minutesAgo}) async {
+    p('$appleGreen ... apiService getting aggregates ...');
+    var results = <CityAggregate>[];
+    setStatus();
+    var suffix1 = 'createAggregatesForAllCities?minutesAgo=$minutesAgo';
+    var fullUrl = '';
+    if (url != null) {
+      fullUrl = '$url$suffix1';
+    } else {
+      throw Exception('Url from .env not found');
+    }
+    try {
+      p("$heartOrange HTTP Url: $fullUrl");
+      var start = DateTime.now().millisecondsSinceEpoch;
+
+      var response = await client
+          .get(Uri.parse(fullUrl))
+          .timeout(const Duration(seconds: 120));
+      _handleElapsed(response, start);
+      if (response.statusCode == 200) {
+        Iterable l = json.decode(response.body);
+        results = List<CityAggregate>.from(
+            l.map((model) => CityAggregate.fromJson(model)));
+
+      } else {
+        p('${Emoji.redDot} Error Response status code: ${response.statusCode}');
+        throw Exception(
+            '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
+      }
+    } catch (e) {
+      _handleException(e);
+    }
+    return results;
   }
 }
 

@@ -32,7 +32,7 @@ class CityPlace {
       this.vicinity, this.cityId, this.cityName, this.province, this.geometry);
 
   CityPlace.fromJson(Map<String, dynamic> map) {
-    // p("🧡🧡🧡🧡🧡🧡 cityPlace, look for geometry ... ${map['geometry']}");
+    // p("🧡🧡🧡🧡🧡🧡 cityPlace, look for placeId ... $map");
     icon = map['icon'];
     cityId = map['cityId'];
     cityName = map['cityName'];
@@ -49,7 +49,13 @@ class CityPlace {
     }
     if (map['placeId'] != null) {
       placeId = map['placeId'];
-    } else {
+      // p("${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen}"
+      //     " cityPlace fromJson, placeId is NOT null");
+    }
+    if (map['place_id'] != null) {
+      placeId = map['place_id'];
+    }
+    if (placeId == null) {
       p("${Emoji.redDot}${Emoji.redDot}${Emoji.redDot}${Emoji.redDot}"
           " cityPlace fromJson, placeId is null");
     }
