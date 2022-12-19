@@ -116,27 +116,21 @@ class CacheService {
   final numberFormat = NumberFormat.compact();
 
   static late SendPort sendPort;
+  static late CacheParameters cacheParameters;
 
   void startCaching({required CacheParameters params}) async {
     sendPort = params.sendPort;
+    cacheParameters = params;
+
     p('\n\n${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen}'
         ' CacheService: .......... preparing remote data for storing in local hive cache ...');
     start = DateTime.now().millisecondsSinceEpoch;
 
+    int minutesAgo = _calculateMinutes();
     if (params.useCacheService) {
-
-
-      var prevDate = DateTime.fromMillisecondsSinceEpoch(params.cacheConfig.longDate);
-      var nowDate = DateTime.now();
-      var milliseconds = nowDate.millisecondsSinceEpoch - prevDate.millisecondsSinceEpoch;
-      var minutes = milliseconds / 1000 ~/ 60;
-      minutes += 15;
-      if (minutes < 180) {
-        minutes = 180;
-      }
       p('${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen}'
-          ' CacheService: .......... preparing remote data from $minutes minutes ago (15 minutes added) ...');
-      _getDataForCaching(minutesAgo: minutes, url: params.url);
+          ' CacheService: .......... preparing remote data from $minutesAgo minutesAgo ago (15 minutesAgo added) ...');
+      _getDataForCaching(minutesAgo: minutesAgo, url: params.url);
       return;
     }
 
@@ -216,6 +210,21 @@ class CacheService {
 
     sendPort.send(msg.toJson());
     p('${Emoji.leaf} CacheService: Main caching took $secs seconds to complete! ${Emoji.redDot}${Emoji.redDot}');
+  }
+
+  int _calculateMinutes() {
+    var prevDate = DateTime.fromMillisecondsSinceEpoch(cacheParameters.cacheConfig.longDate);
+    p('${Emoji.leaf} CacheService: cacheConfig date: ${prevDate.toIso8601String()} ${Emoji.redDot}');
+
+    var nowDate = DateTime.now();
+    var milliseconds = nowDate.millisecondsSinceEpoch - prevDate.millisecondsSinceEpoch;
+    var minutes = milliseconds / 1000 ~/ 60;
+    if (minutes < 100) {
+      minutes = 120;
+    }
+    p('${Emoji.blueDot} CacheService: minutesAgo calculated: $minutes ${Emoji.redDot}');
+
+    return minutes;
   }
 
   void _cacheOneCity({required CacheParameters params}) async {
@@ -645,15 +654,15 @@ class CacheService {
 
   Future<void> _getDataForCaching(
       {required int minutesAgo, required String url}) async {
-    p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: ....... starting _getDataForCaching');
+    p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: ....... starting _getDataForCaching: minutesAgo: $minutesAgo');
     var client = http.Client();
-    var suffix1 = 'getZipFileForCache?minutesAgo=$minutesAgo';
+    var suffix1 = 'getDataForCache?minutesAgo=$minutesAgo';
     var fullUrl = '';
     fullUrl = '$url$suffix1';
     var start = DateTime.now().millisecondsSinceEpoch;
     CacheBag? cacheBag;
     try {
-      p("$heartOrange HTTP Url: $fullUrl");
+      p("$heartOrange _getDataForCaching: HTTP Url: $fullUrl");
 
       var response = await client
           .get(Uri.parse(fullUrl))
@@ -662,6 +671,7 @@ class CacheService {
       printStatusCode(response);
       var end = DateTime.now().millisecondsSinceEpoch;
       double elapsed = _printElapsed(end, start);
+
       if (response.statusCode == 200) {
         p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: unpacking the data coming in ...');
 
@@ -669,12 +679,7 @@ class CacheService {
         cacheBag = CacheBag.fromJson(data);
         cacheBag.elapsedSeconds = elapsed;
 
-        p('${Emoji.brocolli}${Emoji.brocolli} CacheService: '
-            'check cacheBag contents: '
-            'cacheBag.cities: ${cacheBag.cities.length} '
-            ' dashboards: ${cacheBag.dashboards.length} '
-            ' aggregates: ${cacheBag.aggregates.length} '
-            ' places: ${cacheBag.places.length} events ${cacheBag.events.length}');
+        _printCacheBag(cacheBag);
 
         var msg = CacheMessage(
             message: "cacheBag",
@@ -686,10 +691,12 @@ class CacheService {
         p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: sending cacheBag over the sendPort ...');
         sendPort.send(msg.toJson());
 
+        _sendCacheBagMessages(cacheBag, elapsed);
+
         Future.delayed(const Duration(milliseconds: 500), () {
           p('${Emoji.brocolli}${Emoji.brocolli} cacheService: Sending DONE message after waiting 500 milliseconds');
           var msg = CacheMessage(
-              message: "cacheBag done",
+              message: "${Emoji.appleRed} Data extract completed",
               statusCode: STATUS_DONE,
               date: DateTime.now().toIso8601String(),
               elapsedSeconds: elapsed,
@@ -707,6 +714,64 @@ class CacheService {
     }
   }
 
+  void _sendCacheBagMessages(CacheBag cacheBag, double elapsed) {
+    var fm = NumberFormat.decimalPattern();
+    var msg1 = CacheMessage(
+        message: "${Emoji.blueDot} ${cacheBag.cities.length} cities",
+        statusCode: STATUS_BUSY,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: TYPE_MESSAGE);
+    sendPort.send(msg1.toJson());
+
+    var msg2 = CacheMessage(
+        message: "${Emoji.blueDot} ${fm.format(cacheBag.places.length)} places",
+        statusCode: STATUS_BUSY,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: TYPE_MESSAGE);
+    sendPort.send(msg2.toJson());
+
+
+    var msg3 = CacheMessage(
+        message: "${Emoji.blueDot} ${cacheBag.dashboards.length} dashboards",
+        statusCode: STATUS_BUSY,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: TYPE_MESSAGE);
+    sendPort.send(msg3.toJson());
+
+    var msg4 = CacheMessage(
+        message: "${Emoji.blueDot} ${fm.format(cacheBag.aggregates.length)} aggregates",
+        statusCode: STATUS_BUSY,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: TYPE_MESSAGE);
+    sendPort.send(msg4.toJson());
+
+    var msg5 = CacheMessage(
+        message: "${Emoji.blueDot} ${fm.format(cacheBag.events.length)} events",
+        statusCode: STATUS_BUSY,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: TYPE_MESSAGE);
+    sendPort.send(msg5.toJson());
+
+    var msg6 = CacheMessage(
+        message: "${Emoji.peach} ${cacheBag.elapsedSeconds.toStringAsFixed(1)} seconds elapsed",
+        statusCode: STATUS_BUSY,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: TYPE_MESSAGE);
+    sendPort.send(msg6.toJson());
+  }
+
+  static void _printCacheBag(CacheBag bag) {
+    p('\n${Emoji.blueDot}${Emoji.blueDot} CacheBag: date: ${bag.date} cities: ${bag.cities.length} '
+        'places: ${bag.places.length} dashboards: ${bag.dashboards.length} '
+        'aggregates: ${bag.aggregates.length} events: ${bag.events.length}');
+    p('${Emoji.blueDot}${Emoji.blueDot} CacheBag: Call took: ${bag.elapsedSeconds} seconds to execute ${Emoji.blueDot}\n');
+  }
   static void printStatusCode(http.Response response) {
     p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: We have a response from the DataDriver API! $heartOrange '
         'statusCode: ${response.statusCode}');

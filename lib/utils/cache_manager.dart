@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:animations/animations.dart';
+import 'package:emoji_alert/arrays.dart';
+import 'package:emoji_alert/emoji_alert.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -141,21 +143,31 @@ class CacheManagerState extends State<CacheManager>
     Map<String,dynamic> cache = msg.cacheBagJson!;
     var cacheBag = CacheBag.fromJson(cache);
     await hiveUtil.addCities(cities: cacheBag.cities);
-    p('${Emoji.diamond} cities added to Hive: ${cacheBag.cities.length}');
+    p('${Emoji.diamond} CacheManager: cities added to Hive: ${cacheBag.cities.length}');
     await hiveUtil.addPlaces(places: cacheBag.places);
-    p('${Emoji.diamond} places added to Hive: ${cacheBag.places.length}');
+    p('${Emoji.diamond} CacheManager: places added to Hive: ${cacheBag.places.length}');
     await hiveUtil.addEvents(events: cacheBag.events);
-    p('${Emoji.diamond} events added to Hive: ${cacheBag.events.length}');
+    p('${Emoji.diamond} CacheManager: events added to Hive: ${cacheBag.events.length}');
     await hiveUtil.addAggregates(aggregates: cacheBag.aggregates);
-    p('${Emoji.diamond} aggregates added to Hive: ${cacheBag.aggregates.length}');
+    p('${Emoji.diamond} CacheManager: aggregates added to Hive: ${cacheBag.aggregates.length}');
     for (var element in cacheBag.dashboards) {
       await hiveUtil.addDashboardData(data: element);
     }
-    p('${Emoji.diamond} dashboards added to Hive: ${cacheBag.dashboards.length}');
+    p('${Emoji.diamond} CacheManager: dashboards added to Hive: ${cacheBag.dashboards.length}');
     var end = DateTime.now().millisecondsSinceEpoch;
     var elapsed = double.parse('${(end-start)/1000}');
-    p('\n\n${Emoji.appleGreen}${Emoji.appleGreen} CacheManager: big Hive cache job is complete! elapsed time: $elapsed seconds '
+    p('\n\n${Emoji.appleGreen}${Emoji.appleGreen} CacheManager: big Hive cache job is complete! '
+        '${Emoji.appleRed} Hive elapsed time: $elapsed seconds '
         '- ${DateTime.now().toIso8601String()}');
+    var msg3 = CacheMessage(message: "💙💙Hive writes completed",
+        statusCode: STATUS_BUSY, date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed, type: TYPE_MESSAGE);
+    messages.add(msg3);
+    elapsedSeconds += elapsed;
+    isCaching = false;
+    setState(() {
+
+    });
 
   }
 
@@ -170,7 +182,7 @@ class CacheManagerState extends State<CacheManager>
     _createIsolate(daysAgo: daysAgo);
   }
 
-  double elapsedMinutes = 0.0;
+  double elapsedSeconds = 0.0;
   Future<void> _createIsolate({City? city, required int daysAgo}) async {
     try {
       _isolateStart = DateTime.now().millisecondsSinceEpoch;
@@ -191,10 +203,11 @@ class CacheManagerState extends State<CacheManager>
               case TYPE_MESSAGE:
                 messages.add(msg);
                 if (msg.statusCode == STATUS_DONE) {
-                  isCaching = false;
                   p('\n${Emoji.redDot}${Emoji.redDot} '
                       'CacheManager: received end message from CacheService, will remove loading ui '
                       '${Emoji.heartBlue}${Emoji.heartBlue}');
+                  isolate.kill(priority: Isolate.immediate);
+                  p('${Emoji.diamond}${Emoji.diamond}${Emoji.diamond} isolate killed!!');
                   //add cacheConfig
                   await hiveUtil.addCacheConfig(cacheConfig: CacheConfig(
                     longDate: DateTime.now().subtract(const Duration(minutes: 15)).millisecondsSinceEpoch,
@@ -203,14 +216,23 @@ class CacheManagerState extends State<CacheManager>
 
                 } else {
                   if (msg.statusCode == STATUS_ERROR) {
+                    isolate.kill(priority: Isolate.immediate);
+                    p('${Emoji.diamond}${Emoji.diamond}${Emoji.diamond} isolate killed');
                     p("We have an error. Do something!");
+                     var snackBar = SnackBar(
+                      content: Text('Error: ${msg.message}'),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                    isCaching = false;
+                    setState(() {
 
+                    });
                   }
                 }
                 selectedCity = null;
                 setState(() {
                   _isolateEnd = DateTime.now().millisecondsSinceEpoch;
-                  elapsedMinutes = ((_isolateEnd! - _isolateStart)/1000/60);
+                  elapsedSeconds = ((_isolateEnd! - _isolateStart)/1000);
                 });
                 break;
               case TYPE_CITY:
@@ -276,9 +298,26 @@ class CacheManagerState extends State<CacheManager>
 
       errorReceivePort.listen((e) {
         p('${Emoji.redDot}${Emoji.redDot} exception occurred: $e');
+        isCaching = false;
+        setState(() {
+
+        });
+        var ding = EmojiAlert(
+          emojiSize: 32,
+          alertTitle: const Text('DataDriver+'),
+          background: Theme.of(context).backgroundColor,
+          height: 200,
+          emojiType: EMOJI_TYPE.SCARED,
+          description: Text(
+            'Error $e',
+            style: const TextStyle(fontSize: 11),
+          ),
+        );
+        ding.displayAlert(context);
+
       });
     } catch (e) {
-      p('${Emoji.redDot} we have a problem ${Emoji.redDot} ${Emoji.redDot}');
+      p('${Emoji.redDot} we have a problem: $e ${Emoji.redDot} ${Emoji.redDot}');
     }
   }
 
@@ -418,7 +457,7 @@ class CacheManagerState extends State<CacheManager>
                                       const SizedBox(
                                         width: 8,
                                       ),
-                                      Text(elapsedMinutes.toStringAsFixed(2),
+                                      Text(elapsedSeconds.toStringAsFixed(1),
                                           style: GoogleFonts.lato(
                                               textStyle: Theme.of(context)
                                                   .textTheme
@@ -427,7 +466,7 @@ class CacheManagerState extends State<CacheManager>
                                       const SizedBox(
                                         width: 4,
                                       ),
-                                      Text('minutes',
+                                      Text('seconds',
                                           style: GoogleFonts.lato(
                                               textStyle: Theme.of(context)
                                                   .textTheme

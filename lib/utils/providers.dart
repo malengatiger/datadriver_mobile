@@ -49,5 +49,5 @@ const myVar = 0;
 //
 //todo - find a more elegant way of handling these crucial parameters
 
-var minutesAgo = 120;  //4 hours
-var daysAgo = 2;
+var minutesAgo = 240;  //4 hours
+var daysAgo = 3;

@@ -189,7 +189,8 @@ class HiveUtil {
       await _aggregateBox!.put(mKey, agg);
     }
 
-    p('${Emoji.peach}${Emoji.peach} ${aggregates.length} HiveUtil: CityAggregates have been cached in Hive');
+    p('${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach} '
+        'HiveUtil: ${aggregates.length} CityAggregates have been cached in Hive');
   }
 
   Future<void> addCities({required List<City> cities}) async {
@@ -285,7 +286,7 @@ class HiveUtil {
     }
 
     p('${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach}'
-        ' HiveUtil:${places.length} places have been cached in Hive');
+        ' HiveUtil: ${places.length} places have been cached in Hive');
   }
 
   Future<List<CityPlace>> getCityPlaces({required String cityId}) async {
