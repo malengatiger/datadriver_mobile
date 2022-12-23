@@ -17,17 +17,17 @@ class CityAggregateAdapter extends TypeAdapter<CityAggregate> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return CityAggregate(
-      averageRating: fields[0] as double,
-      cityId: fields[1] as String,
-      cityName: fields[2] as String,
-      date: fields[3] as String,
-      numberOfEvents: fields[4] as int,
-      minutesAgo: fields[5] as int,
-      totalSpent: fields[6] as double,
-      longDate: fields[7] as int,
-      latitude: fields[8] as double,
-      longitude: fields[9] as double,
-      elapsedSeconds: fields[10] as double,
+      averageRating: fields[0] as double?,
+      cityId: fields[1] as String?,
+      cityName: fields[2] as String?,
+      date: fields[3] as String?,
+      numberOfEvents: fields[4] as int?,
+      minutesAgo: fields[5] as int?,
+      totalSpent: fields[6] as double?,
+      longDate: fields[7] as int?,
+      latitude: fields[8] as double?,
+      longitude: fields[9] as double?,
+      elapsedSeconds: fields[10] as double?,
     );
   }
 

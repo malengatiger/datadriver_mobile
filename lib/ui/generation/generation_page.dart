@@ -1,11 +1,13 @@
 import 'dart:collection';
 import 'dart:isolate';
 
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:stream_channel/isolate_channel.dart';
+import 'package:universal_frontend/data_models/generation_message.dart';
 import 'package:universal_frontend/services/api_service.dart';
 import 'package:universal_frontend/services/timer_generation.dart';
 
@@ -26,13 +28,16 @@ class GenerationPage extends StatefulWidget {
 
 class GenerationPageState extends State<GenerationPage>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  final _formKey = GlobalKey<FormState>();
+  late AnimationController _animationController;
   var cities = <City>[];
 
   @override
   void initState() {
-    _controller = AnimationController(vsync: this);
+    _animationController = AnimationController(
+        duration: const Duration(seconds: 3),
+        reverseDuration: const Duration(seconds: 2),
+        value: 0.0,
+        vsync: this);
     super.initState();
     _listen();
     _getCities();
@@ -46,9 +51,7 @@ class GenerationPageState extends State<GenerationPage>
       await hiveUtil.addCities(cities: cities);
     }
     cities.sort((a, b) => a.city!.compareTo(b.city!));
-    setState(() {
-
-    });
+    setState(() {});
   }
 
   List<DropdownMenuItem<City>>? menuItems;
@@ -66,13 +69,13 @@ class GenerationPageState extends State<GenerationPage>
 
   @override
   void dispose() {
-    _controller.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
-  final _intervalController = TextEditingController(text: '10');
-  final _maxController = TextEditingController(text: '3');
-  final _upperCountController = TextEditingController(text: '100');
+  final _intervalController = TextEditingController(text: '90');
+  final _maxController = TextEditingController(text: '2');
+  final _upperCountController = TextEditingController(text: '300');
   bool _isGeneration = false;
 
   void _showSnack({
@@ -87,27 +90,83 @@ class GenerationPageState extends State<GenerationPage>
 
   var cityHashMap = HashMap<String, String>();
   var totalGenerated = 0;
+  bool? _isSortedByEvents;
 
-  void processTimerMessage(TimerMessage message) {
-    if (message.statusCode == FINISHED) {
-      p('data generation is done!');
-      try {
-        setState(() {
-          _isGeneration = false;
-        });
-      } catch (e) {
-        p('${Emoji.redDot} Ignored last setState error ${Emoji.redDot}${Emoji.redDot}');
-      }
+  void _sort() {
+    if (_isSortedByEvents == null) {
+      _sortByEvents();
+      _isSortedByEvents = true;
       return;
     }
-    cityHashMap[message.cityName!] = message.cityName!;
+    if (_isSortedByEvents!) {
+      _sortByCity();
+      _isSortedByEvents = false;
+      return;
+    } else {
+      _sortByEvents();
+      _isSortedByEvents = true;
+      return;
+    }
+  }
+
+  void _sortByEvents() {
+    generationMessages.sort((a,b) => b.count!.compareTo(a.count!));
+    setState(() {
+
+    });
+    _scrollToTop();
+  }
+  void _sortByCity() {
+    generationMessages.sort((a,b) => a.message!.compareTo(b.message!));
+    setState(() {
+
+    });
+    _scrollToTop();
+  }
+
+  void processTimerMessage(TimerMessage message) {
+    for (var msg in message.generationMessages!) {
+      cityHashMap[msg.message!] = message.message;
+    }
+    for (var element in message.generationMessages!) {
+      _totalEvents += element.count!;
+    }
+    var end = DateTime.now().millisecondsSinceEpoch;
+    var ms = (end - _start) / 1000;
+    _elapsedSeconds = ms;
+
     totalGenerated += message.events;
+    //consolidate messages
+    var map = HashMap<String, int>();
+    for (var m in generationMessages) {
+      if (map.containsKey(m.message)) {
+        int? count = map[m.message];
+        if (count != null) {
+          count += m.count!;
+          map[m.message!] = count;
+        }
+      } else {
+        map[m.message!] = m.count!;
+      }
+    }
+    generationMessages.clear();
+    map.forEach((key, value) {
+      generationMessages
+          .add(GenerationMessage(type: '', message: key, count: value));
+    });
     if (mounted) {
+      p('${Emoji.redDot} setting state for tick message ... generationMessages: ${generationMessages.length}');
+
       try {
         setState(() {});
       } catch (e) {
         p('${Emoji.redDot} Ignored setState error ${Emoji.redDot}${Emoji.redDot}');
       }
+      _animationController.reverse().then((value) {
+        _animationController.forward().then((value) {
+          _scrollToBottom();
+        });
+      });
     }
   }
 
@@ -130,6 +189,7 @@ class GenerationPageState extends State<GenerationPage>
   }
 
   final numberFormat = NumberFormat.compact();
+  List<GenerationMessage> generationMessages = <GenerationMessage>[];
 
   @override
   Widget build(BuildContext context) {
@@ -178,36 +238,45 @@ class GenerationPageState extends State<GenerationPage>
                                         Theme.of(context).textTheme.bodyLarge,
                                     fontWeight: FontWeight.w900),
                               ),
-                              selectedCity == null?const SizedBox(): Column(
-                                children: [
-                                  const SizedBox(height: 12,),
-                                  Text('${selectedCity!.city}'),
-                                ],
-                              ),
+                              selectedCity == null
+                                  ? const SizedBox()
+                                  : Column(
+                                      children: [
+                                        const SizedBox(
+                                          height: 12,
+                                        ),
+                                        Text('${selectedCity!.city}'),
+                                      ],
+                                    ),
                               const SizedBox(
                                 height: 32,
                               ),
-                              selectedCity == null?TextFormField(
-                                controller: _intervalController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(),
-                                style: GoogleFonts.secularOne(
-                                    textStyle:
-                                        Theme.of(context).textTheme.bodyMedium,
-                                    fontWeight: FontWeight.w900),
-                                decoration: const InputDecoration(
-                                  label: Text('Interval in Seconds'),
-                                  hintText: 'Enter interval seconds',
-                                  border: OutlineInputBorder(),
-                                ),
-                                // The validator receives the text that the user has entered.
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter Interval in Seconds';
-                                  }
-                                  return null;
-                                },
-                              ): const SizedBox(height: 0,),
+                              selectedCity == null
+                                  ? TextFormField(
+                                      controller: _intervalController,
+                                      keyboardType: const TextInputType
+                                          .numberWithOptions(),
+                                      style: GoogleFonts.secularOne(
+                                          textStyle: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium,
+                                          fontWeight: FontWeight.w900),
+                                      decoration: const InputDecoration(
+                                        label: Text('Interval in Seconds'),
+                                        hintText: 'Enter interval seconds',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      // The validator receives the text that the user has entered.
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please enter Interval in Seconds';
+                                        }
+                                        return null;
+                                      },
+                                    )
+                                  : const SizedBox(
+                                      height: 0,
+                                    ),
                               const SizedBox(
                                 height: 16,
                               ),
@@ -219,8 +288,10 @@ class GenerationPageState extends State<GenerationPage>
                                     textStyle:
                                         Theme.of(context).textTheme.bodyMedium,
                                     fontWeight: FontWeight.w900),
-                                decoration:  InputDecoration(
-                                  label: selectedCity == null?const Text('Upper Count'):const Text('Count'),
+                                decoration: InputDecoration(
+                                  label: selectedCity == null
+                                      ? const Text('Upper Count')
+                                      : const Text('Count'),
                                   hintText: 'Enter Upper Count',
                                   border: const OutlineInputBorder(),
                                 ),
@@ -235,27 +306,32 @@ class GenerationPageState extends State<GenerationPage>
                               const SizedBox(
                                 height: 16,
                               ),
-                              selectedCity == null?TextFormField(
-                                controller: _maxController,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(),
-                                style: GoogleFonts.secularOne(
-                                    textStyle:
-                                        Theme.of(context).textTheme.bodyMedium,
-                                    fontWeight: FontWeight.w900),
-                                decoration: const InputDecoration(
-                                  label: Text('Maximum Timer Ticks'),
-                                  hintText: 'Enter Maximum Ticks',
-                                  border: OutlineInputBorder(),
-                                ),
-                                // The validator receives the text that the user has entered.
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter Maximum Timer Ticks';
-                                  }
-                                  return null;
-                                },
-                              ):const SizedBox(height: 0,),
+                              selectedCity == null
+                                  ? TextFormField(
+                                      controller: _maxController,
+                                      keyboardType: const TextInputType
+                                          .numberWithOptions(),
+                                      style: GoogleFonts.secularOne(
+                                          textStyle: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium,
+                                          fontWeight: FontWeight.w900),
+                                      decoration: const InputDecoration(
+                                        label: Text('Maximum Timer Ticks'),
+                                        hintText: 'Enter Maximum Ticks',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      // The validator receives the text that the user has entered.
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please enter Maximum Timer Ticks';
+                                        }
+                                        return null;
+                                      },
+                                    )
+                                  : const SizedBox(
+                                      height: 0,
+                                    ),
                               const SizedBox(
                                 height: 16,
                               ),
@@ -263,19 +339,36 @@ class GenerationPageState extends State<GenerationPage>
                                   ? const SizedBox(
                                       height: 0,
                                     )
-                                  : _isGeneration? const SizedBox(height: 0,): DropdownButton<City>(
-                                hint:  Text('Select City', style: GoogleFonts.lato(
-                                    textStyle: Theme.of(context).textTheme.bodySmall,
-                                    fontWeight: FontWeight.normal,
-                                    color: Theme.of(context).primaryColor),),
-                                      items: cities.map((myCity){
-                                        return DropdownMenuItem(
-                                            value: myCity,
-                                            child: Text('${myCity.city}', style: GoogleFonts.lato(
-                                                textStyle: Theme.of(context).textTheme.bodySmall,
-                                                fontWeight: FontWeight.normal,),),
-                                        );
-                                      }).toList(), onChanged: onChanged),
+                                  : _isGeneration
+                                      ? const SizedBox(
+                                          height: 0,
+                                        )
+                                      : DropdownButton<City>(
+                                          hint: Text(
+                                            'Select City',
+                                            style: GoogleFonts.lato(
+                                                textStyle: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall,
+                                                fontWeight: FontWeight.normal,
+                                                color: Theme.of(context)
+                                                    .primaryColor),
+                                          ),
+                                          items: cities.map((myCity) {
+                                            return DropdownMenuItem(
+                                              value: myCity,
+                                              child: Text(
+                                                '${myCity.city}',
+                                                style: GoogleFonts.lato(
+                                                  textStyle: Theme.of(context)
+                                                      .textTheme
+                                                      .bodySmall,
+                                                  fontWeight: FontWeight.normal,
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                          onChanged: onChanged),
                               const SizedBox(
                                 height: 16,
                               ),
@@ -361,6 +454,200 @@ class GenerationPageState extends State<GenerationPage>
               ),
             ),
           ),
+          generationMessages.isEmpty
+              ? const SizedBox(
+                  height: 0,
+                )
+              : Positioned(
+                  child: AnimatedBuilder(
+                  animation: _animationController,
+                  builder: (BuildContext context, Widget? child) {
+                    return FadeScaleTransition(
+                      animation: _animationController,
+                      child: child,
+                    );
+                  },
+                  child: Container(
+                    color: Theme.of(context).secondaryHeaderColor,
+                    child: Column(
+                      children: [
+                        const SizedBox(
+                          height: 16,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('Generation Results'),
+                            const SizedBox(
+                              width: 60,
+                            ),
+                            IconButton(
+                                onPressed: () {
+                                  _animationController.reverse().then((value) {
+                                    setState(() {
+                                      generationMessages.clear();
+                                    });
+                                  });
+                                },
+                                icon: const Icon(Icons.close))
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 12,
+                            ),
+                            Text('Total Elapsed Time',
+                                style: GoogleFonts.lato(
+                                    textStyle:
+                                        Theme.of(context).textTheme.bodySmall,
+                                    fontWeight: FontWeight.normal,
+                                    fontSize: 12)),
+                            const SizedBox(
+                              width: 8,
+                            ),
+                            Text(_elapsedSeconds.toStringAsFixed(1),
+                                style: GoogleFonts.secularOne(
+                                    textStyle:
+                                        Theme.of(context).textTheme.bodySmall,
+                                    fontWeight: FontWeight.w900)),
+                            const SizedBox(
+                              width: 8,
+                            ),
+                            Text('seconds',
+                                style: GoogleFonts.lato(
+                                    textStyle:
+                                        Theme.of(context).textTheme.bodySmall,
+                                    fontWeight: FontWeight.normal,
+                                    fontSize: 12)),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 12,
+                            ),
+                            Text('Total Events Generated',
+                                style: GoogleFonts.lato(
+                                    textStyle:
+                                        Theme.of(context).textTheme.bodySmall,
+                                    fontWeight: FontWeight.normal,
+                                    fontSize: 12)),
+                            const SizedBox(
+                              width: 8,
+                            ),
+                            Text(fm.format(_totalEvents),
+                                style: GoogleFonts.secularOne(
+                                    textStyle:
+                                        Theme.of(context).textTheme.bodySmall,
+                                    fontWeight: FontWeight.w900)),
+                            const SizedBox(
+                              width: 8,
+                            ),
+                            Text('events',
+                                style: GoogleFonts.lato(
+                                    textStyle:
+                                        Theme.of(context).textTheme.bodySmall,
+                                    fontWeight: FontWeight.normal,
+                                    fontSize: 12)),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 12,
+                            ),
+                            Text('Total Cities Touched',
+                                style: GoogleFonts.lato(
+                                    textStyle:
+                                        Theme.of(context).textTheme.bodySmall,
+                                    fontWeight: FontWeight.normal,
+                                    fontSize: 12)),
+                            const SizedBox(
+                              width: 8,
+                            ),
+                            Text(fm.format(cityHashMap.length),
+                                style: GoogleFonts.secularOne(
+                                    textStyle:
+                                        Theme.of(context).textTheme.bodySmall,
+                                    fontWeight: FontWeight.w900)),
+                            const SizedBox(
+                              width: 8,
+                            ),
+                            Text('cities',
+                                style: GoogleFonts.lato(
+                                    textStyle:
+                                        Theme.of(context).textTheme.bodySmall,
+                                    fontWeight: FontWeight.normal,
+                                    fontSize: 12)),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 16,
+                        ),
+                        Expanded(
+                            child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                          child: ListView.builder(
+                              itemCount: generationMessages.length,
+                              controller: _scrollController,
+                              itemBuilder: (context, index) {
+                                var msg = generationMessages.elementAt(index);
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12.0),
+                                  child: GestureDetector(
+                                    onTap: _sort,
+                                    child: Card(
+                                      elevation: 2,
+                                      // color: Colors.teal,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 2.0),
+                                        child: Row(
+                                          children: [
+                                            const SizedBox(
+                                              width: 8,
+                                            ),
+                                            SizedBox(
+                                              width: 40,
+                                              child: Text(
+                                                fm.format(msg.count),
+                                                style: GoogleFonts.secularOne(
+                                                    textStyle: Theme.of(context)
+                                                        .textTheme
+                                                        .bodySmall,
+                                                    fontWeight: FontWeight.w900),
+                                              ),
+                                            ),
+                                            const SizedBox(
+                                              width: 8,
+                                            ),
+                                            Flexible(
+                                              child: Text(
+                                                  '${Emoji.blueDot} ${msg.message}',
+                                                  style: GoogleFonts.lato(
+                                                      textStyle: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall,
+                                                      fontWeight:
+                                                          FontWeight.normal)),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                        )),
+                      ],
+                    ),
+                  ),
+                )),
           _isGeneration
               ? Positioned(
                   left: 60,
@@ -424,11 +711,20 @@ class GenerationPageState extends State<GenerationPage>
     );
   }
 
+  var fm = NumberFormat.decimalPattern();
+  var _elapsedSeconds = 0.0;
+  var _totalEvents = 0;
+  var _start = 0;
+
   Future<void> startGenerator() async {
     p('${Emoji.pear}${Emoji.pear} startGenerator: spawn isolate ...');
+    _start = DateTime.now().millisecondsSinceEpoch;
+    generationMessages.clear();
     setState(() {
       totalGenerated = 0;
       cityHashMap.clear();
+      _totalEvents = 0;
+      _elapsedSeconds = 0.0;
     });
 
     var status = dotenv.env['CURRENT_STATUS'];
@@ -445,6 +741,7 @@ class GenerationPageState extends State<GenerationPage>
         upperCount: int.parse(_upperCountController.value.text),
         maxTimerTicks: int.parse(_maxController.value.text));
 
+    generationMessages.clear();
     _createIsolate(params: params);
     setState(() {
       _isGeneration = true;
@@ -462,6 +759,28 @@ class GenerationPageState extends State<GenerationPage>
 
   late Isolate isolate;
   late ReceivePort receivePort = ReceivePort();
+  final ScrollController _scrollController = ScrollController();
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      final position = _scrollController.position.maxScrollExtent;
+      _scrollController.animateTo(
+        position,
+        duration: const Duration(seconds: 1),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      final position = _scrollController.position.minScrollExtent;
+      _scrollController.animateTo(
+        position,
+        duration: const Duration(seconds: 1),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   Future<void> _createIsolate({required GenerationParameters params}) async {
     try {
@@ -477,7 +796,7 @@ class GenerationPageState extends State<GenerationPage>
       IsolateChannel channel =
           IsolateChannel(receivePort, receivePort.sendPort);
       channel.stream.listen((data) async {
-        p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received msg: $data');
+        p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received msg ...');
         if (data != null) {
           if (data is String) {
             if (data == 'stop') {
@@ -489,18 +808,34 @@ class GenerationPageState extends State<GenerationPage>
             }
           } else {
             var msg = TimerMessage.fromJson(data);
-            processTimerMessage(msg);
-
-            if (msg.statusCode == FINISHED) {
-              isolate.kill();
-              p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji.redDot} isolate has been killed!');
-              p('${Emoji.blueDot} creating new dashboard data ....');
-              var dash = await apiService.addDashboardData(minutesAgo: minutesAgo);
-              apiService.createCityAggregatesForAllCities(minutesAgo: minutesAgo);
-              p('${Emoji.blueDot} dashboard just created: ${Emoji.blueDot} '
-                  '${dash.toJson()} ${Emoji.blueDot}');
+            if (msg.statusCode == TICK_RESULT) {
+              p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received a ${Emoji.redDot} TICK_RESULT; '
+                  'messages: ${msg.generationMessages!.length}');
+              var list = msg.generationMessages!;
+              generationMessages.addAll(list);
+              processTimerMessage(msg);
+            } else {
+              if (msg.statusCode == FINISHED) {
+                isolate.kill();
+                var end = DateTime.now().millisecondsSinceEpoch;
+                var ms = end - _start;
+                _elapsedSeconds = ms / 1000;
+                p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji.redDot} isolate has been killed!');
+                // //process and display messages
+                // if (msg.generationMessages != null &&
+                //     msg.generationMessages!.isNotEmpty) {
+                //   p('${Emoji.leaf} ${Emoji.leaf}${Emoji.leaf}${Emoji.leaf} '
+                //       'messages to display: ${msg.generationMessages!.length}');
+                //   generationMessages =_consolidateByCity(msg);
+                setState(() {
+                  _isGeneration = false;
+                });
+                _animationController.forward().then((value) {
+                  sendFinishedMessage();
+                });
+              }
+              generationMonitor.addMessage(msg);
             }
-            generationMonitor.addMessage(msg);
           }
         } else {
           sendFinishedMessage();
@@ -517,21 +852,11 @@ class GenerationPageState extends State<GenerationPage>
       isolate.addOnExitListener(receivePort.sendPort);
 
       errorReceivePort.listen((e) {
-        p('${Emoji.redDot}${Emoji.redDot} exception occurred: $e');
-
+        p('${Emoji.redDot}${Emoji.redDot} GenerationPage: exception occurred: $e');
       });
-
     } catch (e) {
       p('${Emoji.redDot} we have a problem ${Emoji.redDot} ${Emoji.redDot}');
     }
-    // Isolate.spawn<GenerationParameters>(heavyTask, params).then((isolate) {
-    //   p('${Emoji.appleGreen }Isolate is known as: ${isolate.debugName}');
-    //   isolate.addOnExitListener(responsePort)
-    // }).catchError((err) {
-    //   p('${Emoji.redDot} We have an error : $err');
-    // }).whenComplete(() {
-    //   p('${Emoji.leaf}${Emoji.leaf} Isolate is complete. Tell someone');
-    // });
   }
 
   var apiService = ApiService();
@@ -547,7 +872,6 @@ class GenerationPageState extends State<GenerationPage>
         selectedCity = null;
       });
     }
-
   }
 
   void onChanged(City? value) {
@@ -564,7 +888,9 @@ class GenerationParameters {
       required this.upperCount,
       required this.maxTimerTicks,
       required this.url,
-      this.sendPort, this.city, this.cities});
+      this.sendPort,
+      this.city,
+      this.cities});
 
   final int intervalInSeconds;
   final int upperCount;
@@ -575,7 +901,7 @@ class GenerationParameters {
   List<City>? cities;
 }
 
-Future<void> heavyTask(GenerationParameters model) async {
+Future<void> heavyTask(GenerationParameters params) async {
   TimerGeneration gen = TimerGeneration();
-  gen.start(params: model);
+  gen.startEventsByRandomCities(params: params);
 }

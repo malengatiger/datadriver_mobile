@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:get/utils.dart';
 import 'package:intl/intl.dart';
 import 'package:universal_frontend/data_models/cache_bag.dart';
-import 'package:universal_frontend/data_models/cache_config.dart';
 import 'package:universal_frontend/data_models/city_aggregate.dart';
 import 'package:universal_frontend/data_models/city_place.dart';
 import 'package:universal_frontend/data_models/dashboard_data.dart';
@@ -22,14 +22,14 @@ class CacheParameters {
   late String url;
   late City? city;
   late bool useCacheService = true;
-  late CacheConfig cacheConfig;
+  late int minutesAgo;
 
   CacheParameters({
     required this.sendPort,
     required this.url,
+    required this.minutesAgo,
     this.city,
     required this.useCacheService,
-    required this.cacheConfig,
   });
 }
 
@@ -84,28 +84,23 @@ class CacheMessage {
       };
 }
 
-const TYPE_MESSAGE = 0,
-    TYPE_CITY = 1,
-    TYPE_PLACE = 2,
-    TYPE_EVENT = 3,
-    TYPE_AGGREGATES = 4,
-    TYPE_DASHBOARDS = 5,
-    TYPE_CACHE_BAG = 6;
-const STATUS_BUSY = 201, STATUS_DONE = 200, STATUS_ERROR = 500;
+const typeMessage = 0,
+    typeCity = 1,
+    typePlace = 2,
+    typeEvent = 3,
+    typeAggregate = 4,
+    typeDashboard = 5,
+    typeCacheBag = 6;
+
+const statusBusy = 201, statusDone = 200, statusError = 500;
 
 class CacheService {
   static final CacheService _instance = CacheService._internal();
 
-  // using a factory is important
-  // because it promises to return _an_ object of this type
-  // but it doesn't promise to make a new one.
   factory CacheService() {
     return _instance;
   }
 
-  // This named constructor is the "real" constructor
-  // It'll be called exactly once, by the static property assignment above
-  // it's also private, so it can only be called in this class
   CacheService._internal() {
     // initialization logic
   }
@@ -126,10 +121,10 @@ class CacheService {
         ' CacheService: .......... preparing remote data for storing in local hive cache ...');
     start = DateTime.now().millisecondsSinceEpoch;
 
-    int minutesAgo = _calculateMinutes();
+    int minutesAgo = cacheParameters.minutesAgo;
     if (params.useCacheService) {
       p('${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen}'
-          ' CacheService: .......... preparing remote data from $minutesAgo minutesAgo ago (15 minutesAgo added) ...');
+          ' CacheService: .......... preparing remote data from $minutesAgo minutesAgo ago ...');
       _getDataForCaching(minutesAgo: minutesAgo, url: params.url);
       return;
     }
@@ -140,7 +135,7 @@ class CacheService {
       return;
     }
     //cache dashboards
-    var m = await _cacheDashboards(url: url, config: params.cacheConfig);
+    var m = await _cacheDashboards(url: url);
     _processMessage(mStart: start, message: '$m dashboards');
     //cache cities
     var i = await _cacheCities(url: url);
@@ -163,8 +158,7 @@ class CacheService {
         var numberOfEvents = await _cacheEvents(
             cityId: city.id!,
             cityName: city.city!,
-            url: url,
-            config: params.cacheConfig);
+            url: url);
         _processMessage(
             mStart: mStart,
             message:
@@ -175,8 +169,7 @@ class CacheService {
         var aggregates = await _cacheAggregates(
             cityId: city.id!,
             cityName: city.city!,
-            url: url,
-            config: params.cacheConfig);
+            url: url);
         _processMessage(
             mStart: mStart,
             message:
@@ -189,10 +182,10 @@ class CacheService {
       var secs = (end - start) / 1000;
       var msg = CacheMessage(
           message: 'Errors stumbled upon. No cities, Senor!',
-          statusCode: STATUS_ERROR,
+          statusCode: statusError,
           date: DateTime.now().toIso8601String(),
           elapsedSeconds: secs,
-          type: TYPE_MESSAGE);
+          type: typeMessage);
       sendPort.send(msg.toJson());
       return;
     }
@@ -203,28 +196,13 @@ class CacheService {
 
     var msg = CacheMessage(
         message: '🔵Caching completed!',
-        statusCode: STATUS_DONE,
+        statusCode: statusDone,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: secs,
-        type: TYPE_MESSAGE);
+        type: typeMessage);
 
     sendPort.send(msg.toJson());
     p('${Emoji.leaf} CacheService: Main caching took $secs seconds to complete! ${Emoji.redDot}${Emoji.redDot}');
-  }
-
-  int _calculateMinutes() {
-    var prevDate = DateTime.fromMillisecondsSinceEpoch(cacheParameters.cacheConfig.longDate);
-    p('${Emoji.leaf} CacheService: cacheConfig date: ${prevDate.toIso8601String()} ${Emoji.redDot}');
-
-    var nowDate = DateTime.now();
-    var milliseconds = nowDate.millisecondsSinceEpoch - prevDate.millisecondsSinceEpoch;
-    var minutes = milliseconds / 1000 ~/ 60;
-    if (minutes < 100) {
-      minutes = 120;
-    }
-    p('${Emoji.blueDot} CacheService: minutesAgo calculated: $minutes ${Emoji.redDot}');
-
-    return minutes;
   }
 
   void _cacheOneCity({required CacheParameters params}) async {
@@ -239,33 +217,28 @@ class CacheService {
     String jsonTags = jsonEncode(places);
     var msg = CacheMessage(
         message: '${params.city!.city!} ${places.length} places cached',
-        statusCode: STATUS_BUSY,
+        statusCode: statusBusy,
         places: jsonTags,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_PLACE);
+        type: typePlace);
 
     p('${Emoji.leaf}${Emoji.leaf} CacheService: returning ${places.length} places via sendPort: ${params.city!.city}\n');
     sendPort.send(msg.toJson());
     msg = CacheMessage(
         message:
             '💙${params.city!.city!} ${numberFormat.format(places.length)} places',
-        statusCode: STATUS_BUSY,
+        statusCode: statusBusy,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_MESSAGE);
+        type: typeMessage);
     sendPort.send(msg.toJson());
     //events
     mStart = DateTime.now().millisecondsSinceEpoch;
-    var minutes =
-        (DateTime.now().millisecondsSinceEpoch - params.cacheConfig.longDate) /
-            1000 ~/
-            60;
-    minutes += 15;
-
+    int minutesAgo = cacheParameters.minutesAgo;
     var events = await _getCityEvents(
         cityId: params.city!.id!,
-        minutesAgo: minutes,
+        minutesAgo: minutesAgo,
         url: params.url); //3 days worth of events
     mEnd = DateTime.now().millisecondsSinceEpoch;
     elapsed = (mEnd - mStart) / 1000;
@@ -273,11 +246,11 @@ class CacheService {
     //send events
     msg = CacheMessage(
         message: '💙${params.city!.city!} ${events.length} events',
-        statusCode: STATUS_BUSY,
+        statusCode: statusBusy,
         events: jsonTags,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_EVENT);
+        type: typeEvent);
 
     p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${events.length} events via sendPort: ${params.city!.city}\n');
     sendPort.send(msg.toJson());
@@ -285,10 +258,10 @@ class CacheService {
     msg = CacheMessage(
         message:
             '💙${params.city!.city!} ${numberFormat.format(events.length)} events',
-        statusCode: STATUS_BUSY,
+        statusCode: statusBusy,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_MESSAGE);
+        type: typeMessage);
 
     p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning caching DONE message via sendPort: ${params.city!.city!}\n');
     sendPort.send(msg.toJson());
@@ -297,18 +270,17 @@ class CacheService {
     var m = _cacheAggregates(
         cityId: params.city!.id!,
         url: params.url,
-        config: params.cacheConfig,
         cityName: params.city!.city!);
     mEnd = DateTime.now().millisecondsSinceEpoch;
     elapsed = (mEnd - mStart) / 1000;
     jsonTags = jsonEncode(events);
     msg = CacheMessage(
         message: '💙${params.city!.city!} ${numberFormat.format(m)} aggregates',
-        statusCode: STATUS_BUSY,
+        statusCode: statusBusy,
         date: DateTime.now().toIso8601String(),
         aggregates: jsonTags,
         elapsedSeconds: elapsed,
-        type: TYPE_AGGREGATES);
+        type: typeAggregate);
 
     p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning caching DONE message via sendPort: ${params.city!.city!}\n');
     sendPort.send(msg.toJson());
@@ -317,10 +289,10 @@ class CacheService {
     elapsed = (mEnd - start) / 1000;
     msg = CacheMessage(
         message: '🍎${params.city!.city!} completed!',
-        statusCode: STATUS_DONE,
+        statusCode: statusDone,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_MESSAGE);
+        type: typeMessage);
 
     p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning caching DONE message via sendPort: ${params.city!.city}\n');
     sendPort.send(msg.toJson());
@@ -331,10 +303,10 @@ class CacheService {
     var elapsed = (mEnd - mStart) / 1000;
     var msg = CacheMessage(
         message: message,
-        statusCode: STATUS_BUSY,
+        statusCode: statusBusy,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_MESSAGE);
+        type: typeMessage);
     sendPort.send(msg.toJson());
   }
 
@@ -348,11 +320,11 @@ class CacheService {
 
     var msg = CacheMessage(
         message: '${cities.length} cities found',
-        statusCode: STATUS_BUSY,
+        statusCode: statusBusy,
         cities: jsonTags,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_CITY);
+        type: typeCity);
 
     p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${cities.length} cities via sendPort\n');
     sendPort.send(msg.toJson());
@@ -371,11 +343,11 @@ class CacheService {
     String jsonTags = jsonEncode(places);
     var msg = CacheMessage(
         message: 'places cached',
-        statusCode: STATUS_BUSY,
+        statusCode: statusBusy,
         places: jsonTags,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_PLACE);
+        type: typePlace);
 
     p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${places.length} places via sendPort: $cityName\n');
     sendPort.send(msg.toJson());
@@ -385,16 +357,11 @@ class CacheService {
   Future<int> _cacheAggregates(
       {required String cityId,
       required String cityName,
-      required String url,
-      required CacheConfig config}) async {
+      required String url}) async {
     var mStart = DateTime.now().millisecondsSinceEpoch;
-    var minutes = 0;
-    minutes =
-        (DateTime.now().millisecondsSinceEpoch - config.longDate) / 1000 ~/ 60;
-    minutes += 15;
-
+    int minutesAgo = cacheParameters.minutesAgo;
     var aggregates =
-        await _getCityAggregates(cityId: cityId, url: url, minutesAgo: minutes);
+        await _getCityAggregates(cityId: cityId, url: url, minutesAgo: minutesAgo);
     if (aggregates.isEmpty) {
       p('${Emoji.redDot} Aggregates not found');
       return 0;
@@ -404,11 +371,11 @@ class CacheService {
     String jsonTags = jsonEncode(aggregates);
     var msg = CacheMessage(
         message: 'city aggregates returned',
-        statusCode: STATUS_BUSY,
+        statusCode: statusBusy,
         aggregates: jsonTags,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_AGGREGATES);
+        type: typeAggregate);
 
     p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${aggregates.length} aggregates via sendPort: $cityName\n');
     sendPort.send(msg.toJson());
@@ -418,62 +385,75 @@ class CacheService {
   Future<int> _cacheEvents(
       {required String cityId,
       required String cityName,
-      required String url,
-      required CacheConfig config}) async {
+      required String url,}) async {
     var mStart = DateTime.now().millisecondsSinceEpoch;
     try {
-      var minutes = 0;
-      minutes = (DateTime.now().millisecondsSinceEpoch - config.longDate) /
-          1000 ~/
-          60;
-      minutes += 15;
-
+      int minutesAgo = cacheParameters.minutesAgo;
       var events =
-          await _getCityEvents(cityId: cityId, minutesAgo: minutes, url: url);
+          await _getCityEvents(cityId: cityId, minutesAgo: minutesAgo, url: url);
 
       if (events.isEmpty) {
-        p('\n${Emoji.blueDot} No events found for minutesAgo: $minutes');
+        p('\n${Emoji.blueDot} No events found for minutesAgo: $minutesAgo');
+        var msg = CacheMessage(
+            message: '$cityName - 0 events',
+            statusCode: statusBusy,
+            events: '',
+            date: DateTime.now().toIso8601String(),
+            elapsedSeconds: 0.0,
+            type: typeMessage);
+
+        p('${Emoji.leaf}${Emoji.redDot} CacheService: returning EMPTY events message via sendPort: $cityName\n');
+        sendPort.send(msg.toJson());
         return 0;
       }
       var mEnd = DateTime.now().millisecondsSinceEpoch;
       double elapsed = (mEnd - mStart) / 1000;
       String jsonTags = jsonEncode(events);
       var msg = CacheMessage(
-          message: '$cityName events cached',
-          statusCode: STATUS_BUSY,
+          message: '$cityName events',
+          statusCode: statusBusy,
           events: jsonTags,
           date: DateTime.now().toIso8601String(),
           elapsedSeconds: elapsed,
-          type: TYPE_EVENT);
+          type: typeEvent);
 
-      p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${events.length} events via sendPort: $cityName\n');
+      p('${Emoji.leaf}${Emoji.leaf} CacheService: returning ${events.length} events message via sendPort: $cityName\n');
       sendPort.send(msg.toJson());
+
+      var msg2 = CacheMessage(
+          message: '$cityName - ${events.length} events',
+          statusCode: statusBusy,
+          events: '',
+          date: DateTime.now().toIso8601String(),
+          elapsedSeconds: elapsed,
+          type: typeMessage);
+
+      p('${Emoji.leaf}${Emoji.leaf} CacheService: returning $cityName events message via sendPort: $cityName\n');
+      sendPort.send(msg2.toJson());
+      p('\n');
+
       return events.length;
     } catch (e) {
-      _handleError(e);
+      _handleError(e,'_cacheEvents');
     }
     return 0;
   }
 
   Future<int> _cacheDashboards(
-      {required String url, required CacheConfig config}) async {
+      {required String url}) async {
     var mStart = DateTime.now().millisecondsSinceEpoch;
-    var minutes = 0;
-    minutes =
-        (DateTime.now().millisecondsSinceEpoch - config.longDate) / 1000 ~/ 60;
-    minutes += 15;
-
-    var dashboards = await _getDashboards(minutesAgo: minutes, url: url);
+    int minutesAgo = cacheParameters.minutesAgo;
+    var dashboards = await _getDashboards(minutesAgo: minutesAgo, url: url);
     var mEnd = DateTime.now().millisecondsSinceEpoch;
     double elapsed = (mEnd - mStart) / 1000;
     String jsonTags = jsonEncode(dashboards);
     var msg = CacheMessage(
         message: '${dashboards.length} dashboards cached',
-        statusCode: STATUS_BUSY,
+        statusCode: statusBusy,
         dashboards: jsonTags,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_DASHBOARDS);
+        type: typeDashboard);
 
     p('\n${Emoji.leaf}${Emoji.leaf} CacheService: returning ${dashboards.length} '
         'dashboards via sendPort: ${dashboards.length}\n');
@@ -497,7 +477,7 @@ class CacheService {
       p('${Emoji.brocolli}${Emoji.brocolli} CacheService: We have a response from the DataDriver API! $heartOrange '
           'statusCode: ${response.statusCode}');
       var end = DateTime.now().millisecondsSinceEpoch;
-      double elapsed = _printElapsed(end, start);
+      _printElapsed(end, start);
 
       if (response.statusCode == 200) {
         Iterable l = json.decode(response.body);
@@ -508,7 +488,7 @@ class CacheService {
             '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      _handleError(e);
+      _handleError(e,'_getCities');
     }
     return cities;
   }
@@ -546,7 +526,7 @@ class CacheService {
             '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      _handleError(e);
+      _handleError(e,'_getCityPlaces');
     }
     return filteredCityPlaces;
   }
@@ -582,7 +562,7 @@ class CacheService {
             '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      _handleError(e);
+      _handleError(e,'_getCityAggregates');
     }
     return aggregates;
   }
@@ -592,7 +572,7 @@ class CacheService {
       required int minutesAgo,
       required String url}) async {
     var client = http.Client();
-    var suffix1 = 'getCityEvents?cityId=$cityId&minutes=$minutesAgo';
+    var suffix1 = 'getEventsForCache?cityId=$cityId&minutesAgo=$minutesAgo';
     var fullUrl = '';
     fullUrl = '$url$suffix1';
     var events = <Event>[];
@@ -602,20 +582,21 @@ class CacheService {
       p("$heartOrange HTTP Url: $fullUrl");
       var response = await client
           .get(Uri.parse(fullUrl))
-          .timeout(const Duration(seconds: 90));
+          .timeout(const Duration(seconds: 900));
       printStatusCode(response);
       var end = DateTime.now().millisecondsSinceEpoch;
-      double elapsed = _printElapsed(end, start);
+      _printElapsed(end, start);
       if (response.statusCode == 200) {
-        Iterable l = json.decode(response.body);
-        events = List<Event>.from(l.map((model) => Event.fromJson(model)));
+        Iterable mapIterable = json.decode(response.body);
+        events = List<Event>.from(mapIterable.map((model) => Event.fromJson(model)));
+        p('Are we there yet?');
       } else {
         p('${Emoji.redDot} Error Response status code: ${response.statusCode}');
         throw Exception(
             '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      _handleError(e);
+      _handleError(e,'_getCityEvents');
     }
     return events;
   }
@@ -647,7 +628,7 @@ class CacheService {
             '${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Server could not handle request: ${response.body}');
       }
     } catch (e) {
-      _handleError(e);
+      _handleError(e,'_getDashboards');
     }
     return dashboards;
   }
@@ -655,6 +636,18 @@ class CacheService {
   Future<void> _getDataForCaching(
       {required int minutesAgo, required String url}) async {
     p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: ....... starting _getDataForCaching: minutesAgo: $minutesAgo');
+    if (minutesAgo == 0) {
+      p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: minutesAgo: $minutesAgo - is zero, quitting!');
+      var msg = CacheMessage(
+          message: "${Emoji.leaf} No need to cache",
+          statusCode: statusDone,
+          date: DateTime.now().toIso8601String(),
+          elapsedSeconds: 0.0,
+          type: typeMessage);
+      p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: sending minutesAgo is ZERO; over the sendPort ...');
+      sendPort.send(msg.toJson());
+      return;
+    }
     var client = http.Client();
     var suffix1 = 'getDataForCache?minutesAgo=$minutesAgo';
     var fullUrl = '';
@@ -663,7 +656,6 @@ class CacheService {
     CacheBag? cacheBag;
     try {
       p("$heartOrange _getDataForCaching: HTTP Url: $fullUrl");
-
       var response = await client
           .get(Uri.parse(fullUrl))
           .timeout(const Duration(seconds: 9000));
@@ -676,100 +668,104 @@ class CacheService {
         p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: unpacking the data coming in ...');
 
         var data = json.decode(response.body);
+        p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: do we get here? #1 ');
         cacheBag = CacheBag.fromJson(data);
         cacheBag.elapsedSeconds = elapsed;
+        p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: do we get here? #2 ');
 
         _printCacheBag(cacheBag);
 
         var msg = CacheMessage(
             message: "cacheBag",
-            statusCode: STATUS_BUSY,
+            statusCode: statusBusy,
             date: DateTime.now().toIso8601String(),
             elapsedSeconds: elapsed,
-            type: TYPE_CACHE_BAG,
+            type: typeCacheBag,
             cacheBagJson: cacheBag.toJson());
         p('${Emoji.brocolli} ${Emoji.brocolli} cacheService: sending cacheBag over the sendPort ...');
         sendPort.send(msg.toJson());
 
         _sendCacheBagMessages(cacheBag, elapsed);
 
+        var cities = await _getCities(cacheParameters.url);
+        var tot = 0;
+        for (var city in cities) {
+          var cnt = await _cacheEvents(cityId: city.id!, cityName: city.city!, url: cacheParameters.url);
+          tot += cnt;
+        }
+
+        p('${Emoji.brocolli}${Emoji.brocolli} cacheService: events processed: $tot');
         Future.delayed(const Duration(milliseconds: 500), () {
           p('${Emoji.brocolli}${Emoji.brocolli} cacheService: Sending DONE message after waiting 500 milliseconds');
           var msg = CacheMessage(
               message: "${Emoji.appleRed} Data extract completed",
-              statusCode: STATUS_DONE,
+              statusCode: statusDone,
               date: DateTime.now().toIso8601String(),
               elapsedSeconds: elapsed,
-              type: TYPE_MESSAGE);
+              type: typeMessage);
           sendPort.send(msg.toJson());
         });
+
       } else {
         p('${Emoji.redDot} Error Response status code: ${response.statusCode}');
         var e = Exception(
             'Server could not handle request, status: ${response.statusCode} - ${response.body}');
-        _handleError(e);
+        _handleError(e,'_getDataForCaching');
       }
     } catch (e) {
-      _handleError(e);
+      _handleError(e,'_getDataForCaching');
     }
   }
 
   void _sendCacheBagMessages(CacheBag cacheBag, double elapsed) {
     var fm = NumberFormat.decimalPattern();
     var msg1 = CacheMessage(
-        message: "${Emoji.blueDot} ${cacheBag.cities.length} cities",
-        statusCode: STATUS_BUSY,
+        message: "${cacheBag.cities.length} cities",
+        statusCode: statusBusy,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_MESSAGE);
+        type: typeMessage);
     sendPort.send(msg1.toJson());
 
     var msg2 = CacheMessage(
-        message: "${Emoji.blueDot} ${fm.format(cacheBag.places.length)} places",
-        statusCode: STATUS_BUSY,
+        message: "${fm.format(cacheBag.places.length)} places",
+        statusCode: statusBusy,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_MESSAGE);
+        type: typeMessage);
     sendPort.send(msg2.toJson());
 
 
     var msg3 = CacheMessage(
-        message: "${Emoji.blueDot} ${cacheBag.dashboards.length} dashboards",
-        statusCode: STATUS_BUSY,
+        message: "${cacheBag.dashboards.length} dashboards",
+        statusCode: statusBusy,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_MESSAGE);
+        type: typeMessage);
     sendPort.send(msg3.toJson());
 
     var msg4 = CacheMessage(
-        message: "${Emoji.blueDot} ${fm.format(cacheBag.aggregates.length)} aggregates",
-        statusCode: STATUS_BUSY,
+        message: "${fm.format(cacheBag.aggregates.length)} aggregates",
+        statusCode: statusBusy,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_MESSAGE);
+        type: typeMessage);
     sendPort.send(msg4.toJson());
 
-    var msg5 = CacheMessage(
-        message: "${Emoji.blueDot} ${fm.format(cacheBag.events.length)} events",
-        statusCode: STATUS_BUSY,
-        date: DateTime.now().toIso8601String(),
-        elapsedSeconds: elapsed,
-        type: TYPE_MESSAGE);
-    sendPort.send(msg5.toJson());
 
     var msg6 = CacheMessage(
-        message: "${Emoji.peach} ${cacheBag.elapsedSeconds.toStringAsFixed(1)} seconds elapsed",
-        statusCode: STATUS_BUSY,
+        message: "${cacheBag.elapsedSeconds} seconds elapsed",
+        statusCode: statusBusy,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: elapsed,
-        type: TYPE_MESSAGE);
+        type: typeMessage);
     sendPort.send(msg6.toJson());
   }
 
   static void _printCacheBag(CacheBag bag) {
     p('\n${Emoji.blueDot}${Emoji.blueDot} CacheBag: date: ${bag.date} cities: ${bag.cities.length} '
         'places: ${bag.places.length} dashboards: ${bag.dashboards.length} '
-        'aggregates: ${bag.aggregates.length} events: ${bag.events.length}');
+        'aggregates: ${bag.aggregates.length} ');
     p('${Emoji.blueDot}${Emoji.blueDot} CacheBag: Call took: ${bag.elapsedSeconds} seconds to execute ${Emoji.blueDot}\n');
   }
   static void printStatusCode(http.Response response) {
@@ -785,14 +781,15 @@ class CacheService {
     return elapsed;
   }
 
-  static void _handleError(dynamic e) {
-    p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Things got a little troubled!  $blueDot error: $e');
+  static void _handleError(dynamic e, String method) {
+    p('${Emoji.redDot} ${Emoji.redDot} ${Emoji.redDot} Method: $method - Things got a little troubled!  $blueDot error: $e');
+
     var msg = CacheMessage(
         message: "$e",
-        statusCode: STATUS_ERROR,
+        statusCode: statusError,
         date: DateTime.now().toIso8601String(),
         elapsedSeconds: 0,
-        type: TYPE_MESSAGE,);
+        type: typeMessage,);
     sendPort.send(msg.toJson());
   }
 }

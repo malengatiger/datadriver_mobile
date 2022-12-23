@@ -71,9 +71,9 @@ class AggregatesMapState extends State<AggregatesMap>
 
   void _calculate() {
     for (var agg in widget.aggregates) {
-      totalCityAmount += agg.totalSpent;
-      totalCityRating += agg.averageRating;
-      totalEvents += agg.numberOfEvents;
+      totalCityAmount += agg.totalSpent!;
+      totalCityRating += agg.averageRating!;
+      totalEvents += agg.numberOfEvents!;
     }
     averageCityRating = totalCityRating / widget.aggregates.length;
     setState(() {});
@@ -91,9 +91,9 @@ class AggregatesMapState extends State<AggregatesMap>
     _markers.clear();
     for (var agg in widget.aggregates) {
       var marker = Marker(
-        markerId: MarkerId(agg.cityId),
+        markerId: MarkerId(agg.cityId!),
         // icon: BitmapDescriptor.fromBytes(markIcon),
-        position: LatLng(agg.latitude, agg.longitude),
+        position: LatLng(agg.latitude!, agg.longitude!),
         infoWindow: InfoWindow(
             title: agg.cityName,
             onTap: () {
@@ -104,7 +104,7 @@ class AggregatesMapState extends State<AggregatesMap>
       _markers.add(marker);
     }
     var latLng = LatLng(
-        widget.aggregates.first.latitude, widget.aggregates.first.longitude);
+        widget.aggregates.first.latitude!, widget.aggregates.first.longitude!);
     googleMapController!.animateCamera(CameraUpdate.newLatLngZoom(latLng, 5));
     p('$diamond $diamond AggregatesMap: ... finished putting agg markers on map');
     setState(() {});
@@ -239,7 +239,7 @@ class AggregatesMapState extends State<AggregatesMap>
                               height: 16,
                             ),
 
-                             MinutesAgoWidget(date: DateTime.parse(firstAggregate.date).toLocal()),
+                             MinutesAgoWidget(date: DateTime.parse(firstAggregate.date!).toLocal()),
                             const SizedBox(
                               height: 8,
                             ),
@@ -387,7 +387,7 @@ class CityAggregateCard extends StatelessWidget {
                 ],
               ),
               Text(
-                cityAggregate.cityName,
+                cityAggregate.cityName!,
                 style: GoogleFonts.secularOne(
                     textStyle: Theme.of(context).textTheme.headline6,
                     fontWeight: FontWeight.w900,
@@ -456,7 +456,7 @@ class CityAggregateCard extends StatelessWidget {
                             color: Colors.white),
                       )),
                   Text(
-                    cityAggregate.averageRating.toStringAsFixed(2),
+                    cityAggregate.averageRating!.toStringAsFixed(2),
                     style: GoogleFonts.secularOne(
                         textStyle: Theme.of(context).textTheme.bodyMedium,
                         fontWeight: FontWeight.w900,

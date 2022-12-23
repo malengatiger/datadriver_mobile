@@ -29,7 +29,7 @@ class CityPageState extends State<CityPage> with SingleTickerProviderStateMixin 
   }
 
   void _getCity() async {
-    city = await DataService.getCity(cityId: widget.aggregate.cityId);
+    city = await DataService.getCity(cityId: widget.aggregate.cityId!);
     setState(() {
 
     });
@@ -40,7 +40,7 @@ class CityPageState extends State<CityPage> with SingleTickerProviderStateMixin 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.aggregate.cityName,
+          widget.aggregate.cityName!,
           style: const TextStyle(fontSize: 14),
         ),
       ),

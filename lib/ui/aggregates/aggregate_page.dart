@@ -60,30 +60,31 @@ class AggregatePageState extends State<AggregatePage>
     _getLocalData();
   }
   CityAggregate? firstAggregate;
+
   void _getLocalData() async {
     p('${Emoji.brocolli} ... getting aggregates from hive cache ...');
     setState(() {
       isLoading = true;
     });
-    // _animationController.reverse();
     try {
-      aggregates = (await hiveUtil.getLatestAggregates())!;
+      aggregates = (await hiveUtil.getLatestAggregates(minutesAgo))!;
       p('${Emoji.brocolli} ... last aggregates found in hive cache: '
           '${aggregates.length}.');
-
       if (aggregates.isEmpty) {
+        p('${Emoji.brocolli} ... aggregates not found in cache, trying remote call ... '
+            '${aggregates.length}.');
         _getAggregates();
         return;
       } else {
         firstAggregate = aggregates.first;
-        var hashMap = HashMap<String,CityAggregate>();
-        _filterAggregates(hashMap);
+        _filterAggregates();
       }
       setState(() {
         isLoading = false;
       });
-      _animationController.forward();
-      _getDataQuietly();
+      _animationController.forward().then((value) {
+        _getDataQuietly();
+      });
 
     } catch (e) {
       p('${Emoji.redDot}${Emoji.redDot} ERROR: $e');
@@ -95,16 +96,15 @@ class AggregatePageState extends State<AggregatePage>
   }
 
   Future<void> _getDataQuietly() async {
-    // _animationController.reverse();
     p('_getDataQuietly starting ... refreshing aggregates ${Emoji.blueDot}');
     firstAggregate = null;
     aggregates = await apiService.getCityAggregates(minutesAgo: minutesAgo);
     if (aggregates.isNotEmpty) {
       firstAggregate = aggregates.first;
       hiveUtil.addAggregates(aggregates: aggregates);
-      var hashMap = HashMap<String,CityAggregate>();
-      _filterAggregates(hashMap);
+      _filterAggregates();
     }
+
     if (mounted) {
       setState(() {});
       _scrollToTop();
@@ -122,11 +122,10 @@ class AggregatePageState extends State<AggregatePage>
     firstAggregate = null;
     aggregates = await apiService.getCityAggregates(minutesAgo: minutesAgo);
     //only the latest aggregates here ......
-    var hashMap = HashMap<String, CityAggregate>();
     if (aggregates.isNotEmpty) {
       firstAggregate = aggregates.first;
       await hiveUtil.addAggregates(aggregates: aggregates);
-      _filterAggregates(hashMap);
+      _filterAggregates();
     }
     if (mounted) {
       setState(() {
@@ -137,16 +136,17 @@ class AggregatePageState extends State<AggregatePage>
     }
   }
 
-  void _filterAggregates(HashMap<String, CityAggregate> hashMap) {
+  void _filterAggregates() {
+    var hashMap = HashMap<String,CityAggregate>();
     for (var agg in aggregates) {
       if (!hashMap.containsKey(agg.cityId)) {
-        hashMap[agg.cityId] = agg;
-        p('Latest aggregate: ${agg.date} added to hashMap ${Emoji.appleRed}${Emoji.appleRed} ${agg.cityName}');
+        hashMap[agg.cityId!] = agg;
       }
     }
     aggregates = hashMap.values.map((e) => e).toList();
-    aggregates.sort((a,b) => a.cityName.compareTo(b.cityName));
-    p('${aggregates.length} filtered aggregates ${Emoji.appleRed}${Emoji.appleRed}');
+    aggregates.sort((a,b) => a.cityName!.compareTo(b.cityName!));
+    p(' ${Emoji.appleRed}${Emoji.appleRed} '
+        '${aggregates.length} filtered aggregates ${Emoji.appleRed}${Emoji.appleRed}');
   }
 
   @override
@@ -215,21 +215,21 @@ class AggregatePageState extends State<AggregatePage>
 
   _sortByAmount() {
     p('${Emoji.redDot} sorting aggregates by totalSpent');
-    aggregates.sort((a, b) => b.totalSpent.compareTo(a.totalSpent));
+    aggregates.sort((a, b) => b.totalSpent!.compareTo(a.totalSpent!));
     setState(() {});
     _scrollToTop();
   }
 
   _sortByRating() {
     p('${Emoji.redDot} sorting aggregates by rating');
-    aggregates.sort((a, b) => b.averageRating.compareTo(a.averageRating));
+    aggregates.sort((a, b) => b.averageRating!.compareTo(a.averageRating!));
     setState(() {});
     _scrollToTop();
   }
 
   _sortByName() {
     p('${Emoji.redDot} sorting aggregates by cityName');
-    aggregates.sort((a, b) => a.cityName.compareTo(b.cityName));
+    aggregates.sort((a, b) => a.cityName!.compareTo(b.cityName!));
     setState(() {});
     _scrollToTop();
   }
@@ -253,481 +253,483 @@ class AggregatePageState extends State<AggregatePage>
     var total = 0.0;
     var events = 0;
     for (var element in aggregates) {
-      total += element.totalSpent;
-      events += element.numberOfEvents;
+      total += element.totalSpent!;
+      events += element.numberOfEvents!;
     }
 
     var f = NumberFormat.compact();
     final fe = NumberFormat.compact();
     var amt = f.format(total);
     var formattedEvents = fe.format(events);
-    return Scaffold(
-      appBar: kIsWeb
-          ? null
-          : AppBar(
-              elevation: 0,
-              backgroundColor: Theme.of(context).secondaryHeaderColor,
-              title: Text(
-                'Aggregates',
-                style: TextStyle(
-                    fontSize: 14, color: Theme.of(context).primaryColor),
-              ),
-              bottom: PreferredSize(
-                  preferredSize: aggregates.isEmpty
-                      ? const Size.fromHeight(120)
-                      : const Size.fromHeight(130),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                        child: AnimatedBuilder(animation: _animationController,
-                            builder: (BuildContext context, Widget? child) {
-                              return FadeScaleTransition(
-                                animation: _animationController,
-                                child: child,
-                              );
-                            },
-                          child: Card(
-                            elevation: 4,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.0),
-                            ),
-                            // color: Colors.brown[50],
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                       SizedBox(
-                                          width: 100,
-                                          child: Text(
-                                            'Total Cities:',
-                                            style: GoogleFonts.lato(
-                                                textStyle: Theme.of(context).textTheme.bodySmall,
-                                                fontWeight: FontWeight.normal, fontSize: 11),
-                                          )),
-                                      const SizedBox(
-                                        width: 12,
-                                      ),
-                                      Text(
-                                        '${aggregates.length}',
-                                        style: GoogleFonts.secularOne(
-                                            textStyle: Theme.of(context).textTheme.bodyMedium,
-                                            fontWeight: FontWeight.w900),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 4,
-                                  ),
-                                  Row(
-                                    children: [
-                                       SizedBox(
-                                          width: 100,
-                                          child: Text(
-                                            'Total Amount:',
-                                            style: GoogleFonts.lato(
-                                                textStyle: Theme.of(context).textTheme.bodySmall,
-                                                fontWeight: FontWeight.normal, fontSize: 11),
-                                          )),
-                                      const SizedBox(
-                                        width: 12,
-                                      ),
-                                      Text(
-                                        amt,
-                                        style: GoogleFonts.secularOne(
-                                            textStyle: Theme.of(context).textTheme.bodyMedium,
-                                            fontWeight: FontWeight.w900),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 4,
-                                  ),
-                                  Row(
-                                    children: [
-                                       SizedBox(
-                                          width: 100,
-                                          child: Text(
-                                            'Total Events:',
-                                            style: GoogleFonts.lato(
-                                                textStyle: Theme.of(context).textTheme.bodySmall,
-                                                fontWeight: FontWeight.normal, fontSize: 11),
-                                          )),
-                                      const SizedBox(
-                                        width: 12,
-                                      ),
-                                      Text(
-                                        formattedEvents,
-                                        style: GoogleFonts.secularOne(
-                                            textStyle: Theme.of(context).textTheme.bodyMedium,
-                                            fontWeight: FontWeight.w900),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+    return SafeArea(
+      child: Scaffold(
+        appBar: kIsWeb
+            ? null
+            : AppBar(
+                elevation: 0,
+                backgroundColor: Theme.of(context).secondaryHeaderColor,
+                title: Text(
+                  'Aggregates',
+                  style: TextStyle(
+                      fontSize: 14, color: Theme.of(context).primaryColor),
+                ),
+                bottom: PreferredSize(
+                    preferredSize: aggregates.isEmpty
+                        ? const Size.fromHeight(120)
+                        : const Size.fromHeight(130),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                          child: AnimatedBuilder(animation: _animationController,
+                              builder: (BuildContext context, Widget? child) {
+                                return FadeScaleTransition(
+                                  animation: _animationController,
+                                  child: child,
+                                );
+                              },
+                            child: Card(
+                              elevation: 4,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16.0),
                               ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(
-                        height: 16,
-                      ),
-                      InkWell(
-                        onTap: _getAggregates,
-                        child: firstAggregate== null? const SizedBox(): MinutesAgoWidget(date:
-                        DateTime.parse(firstAggregate!.date).toLocal()),
-                      ),
-                      const SizedBox(
-                        height: 8,
-                      ),
-                    ],
-                  )),
-              actions: [
-                IconButton(
-                    onPressed: _getAggregates, icon: const Icon(Icons.refresh)),
-              ],
-            ),
-      backgroundColor: Theme.of(context).secondaryHeaderColor,
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Card(
-          elevation: 8,
-          color: Theme.of(context).secondaryHeaderColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24.0),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Stack(
-              children: [
-                isLoading
-                    ? Center(
-                        child: SizedBox(
-                          height: 48,
-                          width: 200,
-                          child: Card(
-                            elevation: 16,
-                            // color: Colors.brown[50],
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.0),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                children: const [
-                                  SizedBox(
-                                    width: 4,
-                                  ),
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(horizontal: 2.0),
-                                    child: Text(
-                                      'Calculating ...',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.normal,
-                                          fontSize: 12),
+                              // color: Colors.brown[50],
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      children: [
+                                         SizedBox(
+                                            width: 100,
+                                            child: Text(
+                                              'Total Cities:',
+                                              style: GoogleFonts.lato(
+                                                  textStyle: Theme.of(context).textTheme.bodySmall,
+                                                  fontWeight: FontWeight.normal, fontSize: 11),
+                                            )),
+                                        const SizedBox(
+                                          width: 12,
+                                        ),
+                                        Text(
+                                          '${aggregates.length}',
+                                          style: GoogleFonts.secularOne(
+                                              textStyle: Theme.of(context).textTheme.bodyMedium,
+                                              fontWeight: FontWeight.w900),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  SizedBox(
-                                    width: 28,
-                                  ),
-                                  Center(
-                                    child: SizedBox(
-                                      height: 16,
-                                      width: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 8,
-                                        backgroundColor: Colors.pink,
-                                      ),
+                                    const SizedBox(
+                                      height: 4,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                    : Column(
-                        children: [
-                          kIsWeb //todo check!!!
-                              ?  SizedBox(
-                                  height: 80,
-                                  child: MinutesAgoWidget(date: firstAggregate == null? DateTime.now() :
-                                  DateTime.parse(firstAggregate!.date).toLocal(),),
-                                )
-                              :  SizedBox(
-                                  height: 24,
-                                  child: Column(
-                                    children: [
-                                      Text('Average Rating and Total Spent',
-                                        style: GoogleFonts.lato(
-                                            textStyle: Theme.of(context).textTheme.bodySmall,
-                                            fontWeight: FontWeight.normal, fontSize: 12),
-                                      ),
-                                      const SizedBox(height: 8,),
-                                    ],
-                                  ),
+                                    Row(
+                                      children: [
+                                         SizedBox(
+                                            width: 100,
+                                            child: Text(
+                                              'Total Amount:',
+                                              style: GoogleFonts.lato(
+                                                  textStyle: Theme.of(context).textTheme.bodySmall,
+                                                  fontWeight: FontWeight.normal, fontSize: 11),
+                                            )),
+                                        const SizedBox(
+                                          width: 12,
+                                        ),
+                                        Text(
+                                          amt,
+                                          style: GoogleFonts.secularOne(
+                                              textStyle: Theme.of(context).textTheme.bodyMedium,
+                                              fontWeight: FontWeight.w900),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(
+                                      height: 4,
+                                    ),
+                                    Row(
+                                      children: [
+                                         SizedBox(
+                                            width: 100,
+                                            child: Text(
+                                              'Total Events:',
+                                              style: GoogleFonts.lato(
+                                                  textStyle: Theme.of(context).textTheme.bodySmall,
+                                                  fontWeight: FontWeight.normal, fontSize: 11),
+                                            )),
+                                        const SizedBox(
+                                          width: 12,
+                                        ),
+                                        Text(
+                                          formattedEvents,
+                                          style: GoogleFonts.secularOne(
+                                              textStyle: Theme.of(context).textTheme.bodyMedium,
+                                              fontWeight: FontWeight.w900),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                          aggregates.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    children: [
-                                      const SizedBox(
-                                        height: 60,
-                                      ),
-                                      const Text(
-                                        'No aggregate data',
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          height: 16,
+                        ),
+                        InkWell(
+                          onTap: _getAggregates,
+                          child: firstAggregate== null? const SizedBox(): MinutesAgoWidget(date:
+                          DateTime.parse(firstAggregate!.date!).toLocal()),
+                        ),
+                        const SizedBox(
+                          height: 8,
+                        ),
+                      ],
+                    )),
+                actions: [
+                  IconButton(
+                      onPressed: _getAggregates, icon: const Icon(Icons.refresh)),
+                ],
+              ),
+        backgroundColor: Theme.of(context).secondaryHeaderColor,
+        body: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Card(
+            elevation: 8,
+            color: Theme.of(context).secondaryHeaderColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24.0),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Stack(
+                children: [
+                  isLoading
+                      ? Center(
+                          child: SizedBox(
+                            height: 48,
+                            width: 200,
+                            child: Card(
+                              elevation: 16,
+                              // color: Colors.brown[50],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16.0),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  children: const [
+                                    SizedBox(
+                                      width: 4,
+                                    ),
+                                    Padding(
+                                      padding:
+                                          EdgeInsets.symmetric(horizontal: 2.0),
+                                      child: Text(
+                                        'Calculating ...',
                                         style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w900),
+                                            fontWeight: FontWeight.normal,
+                                            fontSize: 12),
                                       ),
-                                      const SizedBox(
-                                        height: 8,
+                                    ),
+                                    SizedBox(
+                                      width: 28,
+                                    ),
+                                    Center(
+                                      child: SizedBox(
+                                        height: 16,
+                                        width: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 8,
+                                          backgroundColor: Colors.pink,
+                                        ),
                                       ),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          const Text('Tap'),
-                                          const SizedBox(
-                                            width: 4,
-                                          ),
-                                          IconButton(
-                                              onPressed: _getAggregates,
-                                              icon: const Icon(Icons.refresh)),
-                                          const SizedBox(
-                                            width: 4,
-                                          ),
-                                          const Text('to refresh data'),
-                                          const SizedBox(
-                                            width: 12,
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      : Column(
+                          children: [
+                            kIsWeb //todo check!!!
+                                ?  SizedBox(
+                                    height: 80,
+                                    child: MinutesAgoWidget(date: firstAggregate == null? DateTime.now() :
+                                    DateTime.parse(firstAggregate!.date!).toLocal(),),
+                                  )
+                                :  SizedBox(
+                                    height: 24,
+                                    child: Column(
+                                      children: [
+                                        Text('Average Rating and Total Spent',
+                                          style: GoogleFonts.lato(
+                                              textStyle: Theme.of(context).textTheme.bodySmall,
+                                              fontWeight: FontWeight.normal, fontSize: 12),
+                                        ),
+                                        const SizedBox(height: 8,),
+                                      ],
+                                    ),
                                   ),
-                                )
-                              : Expanded(
-                                  child: kIsWeb
-                                      ? CityAggregateTable(
-                                          aggregates: aggregates,
-                                          sortBy: sortBy,
-                                          onSelected: (cityAggregate) {
-                                            p('${Emoji.brocolli} city aggregate selected: ${cityAggregate.toJson()}');
-                                            if (widget.onSelected != null) {
-                                              widget.onSelected!(cityAggregate);
-                                            }
-                                          },
-                                        )
-                                      : AnimatedBuilder(
-                                          animation: _animationController,
-                                          builder: (BuildContext context,
-                                              Widget? child) {
-                                            return FadeScaleTransition(
-                                              animation: _animationController,
-                                              child: child,
-                                            );
-                                          },
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(
-                                                bottom: 2.0),
-                                            child: Badge(
-                                              elevation: 8,
-                                              toAnimate: true,
-                                              badgeContent: Text(
-                                                '${aggregates.length}',
-                                                style: const TextStyle(
-                                                    color: Colors.white),
-                                              ),
-                                              child: ListView.builder(
-                                                  itemCount: aggregates.length,
-                                                  controller: listScrollController,
-                                                  itemBuilder:
-                                                      (context, index) {
-                                                    var agg = aggregates
-                                                        .elementAt(index);
-                                                    var fm =
-                                                        NumberFormat.compact();
-                                                    return Padding(
-                                                      padding: const EdgeInsets
-                                                              .symmetric(
-                                                          horizontal: 4),
-                                                      child: PopupMenuButton(
-                                                        elevation: 8,
-                                                        // color: Colors.brown[50],
-                                                        onSelected: (value) {
-                                                          p('${Emoji.redDot} PopupMenuButton: onSelected: $value');
-                                                        },
-                                                        itemBuilder: (context) {
-                                                          return [
-                                                            PopupMenuItem(
-                                                              value: 'goToMap',
-                                                              onTap: () {
-                                                                p('${Emoji.redDot} PopupMenuItem: city menu item tapped, goToMap: ${agg.cityName}');
-                                                                navigateToCityMap(
-                                                                    agg: agg);
-                                                              },
-                                                              child: ListTile(
-                                                                title: Text(
-                                                                  'Go to Map',
-                                                                  style:
-                                                                  thinStyle,
-                                                                ),
-                                                                leading: const Icon(
-                                                                    Icons
-                                                                        .location_on),
-                                                              ),
-                                                            ),
-                                                            PopupMenuItem(
-                                                              value:
-                                                                  'sortByAmount',
-                                                              onTap: () {
-                                                                p('${Emoji.redDot} PopupMenuItem: Sort By Amount tapped');
-                                                                _sortByAmount();
-                                                              },
-                                                              child: ListTile(
-                                                                leading: const Icon(
-                                                                    Icons
-                                                                        .sort_by_alpha),
-                                                                title: Text(
-                                                                  'Sort By Amount',
-                                                                  style:
-                                                                      thinStyle,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                            PopupMenuItem(
-                                                              value:
-                                                                  'sortByName',
-                                                              onTap: () {
-                                                                p('${Emoji.redDot} PopupMenuItem: Sort By Name tapped');
-                                                                _sortByName();
-                                                              },
-                                                              child: ListTile(
-                                                                leading: const Icon(
-                                                                    Icons
-                                                                        .sort_by_alpha),
-                                                                title: Text(
-                                                                  'Sort By Name',
-                                                                  style:
-                                                                      thinStyle,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                            PopupMenuItem(
-                                                              value:
-                                                                  'sortByRating',
-                                                              onTap: () {
-                                                                p('${Emoji.redDot} PopupMenuItem: Sort By Rating tapped');
-                                                                _sortByRating();
-                                                              },
-                                                              child: ListTile(
-                                                                leading: const Icon(
-                                                                    Icons
-                                                                        .sort_by_alpha),
-                                                                title: Text(
-                                                                  'Sort By Rating',
-                                                                  style:
-                                                                      thinStyle,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          ];
-                                                        },
-                                                        child: Card(
-                                                          elevation: 1,
-                                                          shape:
-                                                              RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        8.0),
-                                                          ),
-                                                          child: Padding(
-                                                            padding:
-                                                                const EdgeInsets
-                                                                    .all(8.0),
-                                                            child: Row(
-                                                              children: [
-                                                                SizedBox(
-                                                                    width: 40,
-                                                                    child: Text(
-                                                                        agg.averageRating
-                                                                            .toStringAsFixed(
-                                                                                1),
-                                                                        style: const TextStyle(
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            color: Colors.blue))),
-                                                                // SizedBox(
-                                                                //     width: 60,
-                                                                //     child: Text(
-                                                                //         f.format(agg.numberOfEvents),
-                                                                //         style: const TextStyle(
-                                                                //             fontWeight: FontWeight
-                                                                //                 .bold))),
-                                                                SizedBox(
-                                                                    width: 80,
-                                                                    child: Text(
-                                                                        fm.format(agg
-                                                                            .totalSpent),
-                                                                      style: GoogleFonts.secularOne(
-                                                                          textStyle: Theme.of(context).textTheme.bodyMedium,
-                                                                          fontWeight: FontWeight.w900),
-                                                                    ),
-                                                                ),
-                                                                Flexible(
-                                                                  child: Text(
-                                                                    agg.cityName,
+                            aggregates.isEmpty
+                                ? Center(
+                                    child: Column(
+                                      children: [
+                                        const SizedBox(
+                                          height: 60,
+                                        ),
+                                        const Text(
+                                          'No aggregate data',
+                                          style: TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w900),
+                                        ),
+                                        const SizedBox(
+                                          height: 8,
+                                        ),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Text('Tap'),
+                                            const SizedBox(
+                                              width: 4,
+                                            ),
+                                            IconButton(
+                                                onPressed: _getAggregates,
+                                                icon: const Icon(Icons.refresh)),
+                                            const SizedBox(
+                                              width: 4,
+                                            ),
+                                            const Text('to refresh data'),
+                                            const SizedBox(
+                                              width: 12,
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : Expanded(
+                                    child: kIsWeb
+                                        ? CityAggregateTable(
+                                            aggregates: aggregates,
+                                            sortBy: sortBy,
+                                            onSelected: (cityAggregate) {
+                                              p('${Emoji.brocolli} city aggregate selected: ${cityAggregate.toJson()}');
+                                              if (widget.onSelected != null) {
+                                                widget.onSelected!(cityAggregate);
+                                              }
+                                            },
+                                          )
+                                        : AnimatedBuilder(
+                                            animation: _animationController,
+                                            builder: (BuildContext context,
+                                                Widget? child) {
+                                              return FadeScaleTransition(
+                                                animation: _animationController,
+                                                child: child,
+                                              );
+                                            },
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(
+                                                  bottom: 2.0),
+                                              child: Badge(
+                                                elevation: 8,
+                                                toAnimate: true,
+                                                badgeContent: Text(
+                                                  '${aggregates.length}',
+                                                  style: const TextStyle(
+                                                      color: Colors.white),
+                                                ),
+                                                child: ListView.builder(
+                                                    itemCount: aggregates.length,
+                                                    controller: listScrollController,
+                                                    itemBuilder:
+                                                        (context, index) {
+                                                      var agg = aggregates
+                                                          .elementAt(index);
+                                                      var fm =
+                                                          NumberFormat.compact();
+                                                      return Padding(
+                                                        padding: const EdgeInsets
+                                                                .symmetric(
+                                                            horizontal: 4),
+                                                        child: PopupMenuButton(
+                                                          elevation: 8,
+                                                          // color: Colors.brown[50],
+                                                          onSelected: (value) {
+                                                            p('${Emoji.redDot} PopupMenuButton: onSelected: $value');
+                                                          },
+                                                          itemBuilder: (context) {
+                                                            return [
+                                                              PopupMenuItem(
+                                                                value: 'goToMap',
+                                                                onTap: () {
+                                                                  p('${Emoji.redDot} PopupMenuItem: city menu item tapped, goToMap: ${agg.cityName}');
+                                                                  navigateToCityMap(
+                                                                      agg: agg);
+                                                                },
+                                                                child: ListTile(
+                                                                  title: Text(
+                                                                    'Go to Map',
                                                                     style:
-                                                                        const TextStyle(
-                                                                      fontSize:
-                                                                          12,
-                                                                    ),
+                                                                    thinStyle,
+                                                                  ),
+                                                                  leading: const Icon(
+                                                                      Icons
+                                                                          .location_on),
+                                                                ),
+                                                              ),
+                                                              PopupMenuItem(
+                                                                value:
+                                                                    'sortByAmount',
+                                                                onTap: () {
+                                                                  p('${Emoji.redDot} PopupMenuItem: Sort By Amount tapped');
+                                                                  _sortByAmount();
+                                                                },
+                                                                child: ListTile(
+                                                                  leading: const Icon(
+                                                                      Icons
+                                                                          .sort_by_alpha),
+                                                                  title: Text(
+                                                                    'Sort By Amount',
+                                                                    style:
+                                                                        thinStyle,
                                                                   ),
                                                                 ),
-                                                                const SizedBox(
-                                                                  width: 8,
+                                                              ),
+                                                              PopupMenuItem(
+                                                                value:
+                                                                    'sortByName',
+                                                                onTap: () {
+                                                                  p('${Emoji.redDot} PopupMenuItem: Sort By Name tapped');
+                                                                  _sortByName();
+                                                                },
+                                                                child: ListTile(
+                                                                  leading: const Icon(
+                                                                      Icons
+                                                                          .sort_by_alpha),
+                                                                  title: Text(
+                                                                    'Sort By Name',
+                                                                    style:
+                                                                        thinStyle,
+                                                                  ),
                                                                 ),
-                                                              ],
+                                                              ),
+                                                              PopupMenuItem(
+                                                                value:
+                                                                    'sortByRating',
+                                                                onTap: () {
+                                                                  p('${Emoji.redDot} PopupMenuItem: Sort By Rating tapped');
+                                                                  _sortByRating();
+                                                                },
+                                                                child: ListTile(
+                                                                  leading: const Icon(
+                                                                      Icons
+                                                                          .sort_by_alpha),
+                                                                  title: Text(
+                                                                    'Sort By Rating',
+                                                                    style:
+                                                                        thinStyle,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ];
+                                                          },
+                                                          child: Card(
+                                                            elevation: 1,
+                                                            shape:
+                                                                RoundedRectangleBorder(
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          8.0),
+                                                            ),
+                                                            child: Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .all(8.0),
+                                                              child: Row(
+                                                                children: [
+                                                                  SizedBox(
+                                                                      width: 40,
+                                                                      child: Text(
+                                                                          agg.averageRating!
+                                                                              .toStringAsFixed(
+                                                                                  1),
+                                                                          style: const TextStyle(
+                                                                              fontWeight:
+                                                                                  FontWeight.bold,
+                                                                              color: Colors.blue))),
+                                                                  // SizedBox(
+                                                                  //     width: 60,
+                                                                  //     child: Text(
+                                                                  //         f.format(agg.numberOfEvents),
+                                                                  //         style: const TextStyle(
+                                                                  //             fontWeight: FontWeight
+                                                                  //                 .bold))),
+                                                                  SizedBox(
+                                                                      width: 80,
+                                                                      child: Text(
+                                                                          fm.format(agg
+                                                                              .totalSpent),
+                                                                        style: GoogleFonts.secularOne(
+                                                                            textStyle: Theme.of(context).textTheme.bodyMedium,
+                                                                            fontWeight: FontWeight.w900),
+                                                                      ),
+                                                                  ),
+                                                                  Flexible(
+                                                                    child: Text(
+                                                                      agg.cityName!,
+                                                                      style:
+                                                                          const TextStyle(
+                                                                        fontSize:
+                                                                            12,
+                                                                      ),
+                                                                    ),
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    width: 8,
+                                                                  ),
+                                                                ],
+                                                              ),
                                                             ),
                                                           ),
                                                         ),
-                                                      ),
-                                                    );
-                                                  }),
+                                                      );
+                                                    }),
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                ),
-                        ],
-                      ),
-              ],
+                                  ),
+                          ],
+                        ),
+                ],
+              ),
             ),
           ),
         ),
+        bottomNavigationBar: aggregates.isEmpty
+            ? null
+            : BottomNavigationBar(
+                elevation: 8,
+                currentIndex: 0,
+                onTap: (value) {
+                  onNavTap(context, value);
+                },
+                items: const [
+                    BottomNavigationBarItem(
+                        icon: Icon(Icons.area_chart_sharp), label: 'Charts'),
+                    BottomNavigationBarItem(
+                        icon: Icon(Icons.location_on), label: 'Maps'),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.list_rounded),
+                      label: 'Cities',
+                    ),
+                  ]),
       ),
-      bottomNavigationBar: aggregates.isEmpty
-          ? null
-          : BottomNavigationBar(
-              elevation: 8,
-              currentIndex: 0,
-              onTap: (value) {
-                onNavTap(context, value);
-              },
-              items: const [
-                  BottomNavigationBarItem(
-                      icon: Icon(Icons.area_chart_sharp), label: 'Charts'),
-                  BottomNavigationBarItem(
-                      icon: Icon(Icons.location_on), label: 'Maps'),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.list_rounded),
-                    label: 'Cities',
-                  ),
-                ]),
     );
   }
 

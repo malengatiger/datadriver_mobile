@@ -22,16 +22,10 @@ HiveUtil hiveUtil = HiveUtil._instance;
 class HiveUtil {
   static final HiveUtil _instance = HiveUtil._internal();
 
-  // using a factory is important
-  // because it promises to return _an_ object of this type
-  // but it doesn't promise to make a new one.
   factory HiveUtil() {
     return _instance;
   }
 
-  // This named constructor is the "real" constructor
-  // It'll be called exactly once, by the static property assignment above
-  // it's also private, so it can only be called in this class
   HiveUtil._internal() {
     // initialization logic
     //_init();
@@ -54,7 +48,7 @@ class HiveUtil {
 
       try {
         _boxCollection = await BoxCollection.open(
-          'DataBoxOneA', // Name of your database
+          'DataBoxOneA02', // Name of your database
           {'events', 'aggregates', 'dashboardData', 'cities', 'cityPlaces', 'cacheConfigs'},
           // Names of your boxes
           path: file
@@ -123,13 +117,7 @@ class HiveUtil {
       }
     }
   }
-  Future<void> addCacheConfig({required CacheConfig cacheConfig}) async {
-    await _init();
-    var key = '${cacheConfig.longDate}';
-    await _cacheConfigBox!.put(key, cacheConfig);
-    p('${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}'
-        ' CacheConfig ${cacheConfig.stringDate} added to Hive cache');
-  }
+
   Future<DashboardData?> getLatestDashboardData() async {
     await _init();
     var keys = await _dashboardDataBox!.getAllKeys();
@@ -144,40 +132,44 @@ class HiveUtil {
     return null;
   }
 
+  Future<void> addDashboardDataList({required List<DashboardData> dataList}) async {
+    await _init();
 
-  Future<void> addDashboardData({required DashboardData data}) async {
+    for (var element in dataList) {
+      Future.delayed(const Duration(milliseconds: 20), () async {
+        await _addDashboardData(data: element);
+      });
+    }
+    p('${Emoji.pear} HiveUtil: ${dataList.length} dashboards cached' );
+  }
+  Future<void> _addDashboardData({required DashboardData data}) async {
     await _init();
     DateTime dt = DateTime.parse(data.date);
     var key = '${dt.millisecondsSinceEpoch}';
     await _dashboardDataBox!.put(key, data);
-    p('${Emoji.leaf}${Emoji.leaf}${Emoji.leaf}'
-        ' DashboardData ${data.date} added to Hive cache');
   }
 
-  Future<CacheConfig?> getLatestCacheConfig() async {
-    await _init();
-    var keys = await _cacheConfigBox!.getAllKeys();
-    keys.sort((a, b) => b.compareTo(a)); //sort desc
-    if (keys.isNotEmpty) {
-      var data = await _cacheConfigBox!.get(keys[0]);
-      p('${Emoji.peach}${Emoji.peach}${Emoji.peach} Last cacheConfig data retrieved: ${data?.stringDate}');
-      return data;
-    }
-    return null;
-  }
-
-  Future<List<DashboardData>> getDashboardDataList() async {
+  Future<List<DashboardData>> getDashboardDataList(int numberOfBoards) async {
     await _init();
     var keys = await _dashboardDataBox!.getAllKeys();
     p('${Emoji.peach}${Emoji.peach}${Emoji.peach} hive dash keys: ${keys.length}');
-    keys.sort((a, b) => a.compareTo(b));
+    keys.sort((a, b) => b.compareTo(a));
     var list = <DashboardData>[];
+    int cnt = 0;
     for (var key in keys) {
       var dd = await _dashboardDataBox!.get(key);
-      if (dd != null) {
-        list.add(dd);
+      if (cnt < numberOfBoards) {
+        if (dd != null) {
+          list.add(dd);
+          cnt++;
+
+        }
       }
+
     }
+
+    list.sort((a, b) => a.longDate.compareTo(b.longDate));
+
     return list;
   }
 
@@ -185,7 +177,7 @@ class HiveUtil {
     await _init();
 
     for (var agg in aggregates) {
-      String mKey = '${agg.cityId}-${agg.longDate}';
+      String mKey = '${agg.cityId}*${agg.longDate}';
       await _aggregateBox!.put(mKey, agg);
     }
 
@@ -203,18 +195,36 @@ class HiveUtil {
         ' HiveUtil: ${cities.length} cities have been cached in Hive');
   }
 
-  Future<List<CityAggregate>?> getLatestAggregates() async {
+  Future<List<CityAggregate>?> getLatestAggregates(int minutesAgo) async {
     await _init();
     var keys = await _aggregateBox!.getAllKeys();
+    p('🔷🔷🔷🔷HiveUtil: Aggregates KEYS found in cache: ${keys.length}');
+
     keys.sort((a, b) => b.compareTo(a));
+
     var list = <CityAggregate>[];
+    var start = DateTime.now().millisecondsSinceEpoch;
     if (keys.isNotEmpty) {
       for (var key in keys) {
-        var agg = await _aggregateBox!.get(key);
-        list.add(agg!);
+        //get longDate part of key
+        var keySplits = key.split('*');
+        var stringLongDate = keySplits[1];
+
+        var keyDate = DateTime.fromMillisecondsSinceEpoch(int.parse(stringLongDate));
+        var now = DateTime.now();
+        var deltaMs = now.millisecondsSinceEpoch - keyDate.millisecondsSinceEpoch;
+        var deltaMinutes = deltaMs/1000~/60;
+        if (deltaMinutes <= minutesAgo) {
+          var agg = await _aggregateBox!.get(key);
+          list.add(agg!);
+        }
+
       }
-      p('🔷🔷🔷🔷HiveUtil: latest Aggregates found in cache: ${list.length}');
+      p('🔷🔷🔷🔷HiveUtil: Aggregates found in cache: ${list.length}');
       _filterAggregates(list);
+      var end = DateTime.now().millisecondsSinceEpoch;
+      p('🔷🔷🔷🔷HiveUtil: Aggregates search; elapsed milliseconds: ${(end-start)}');
+
       return list;
     }
     return [];
@@ -224,12 +234,11 @@ class HiveUtil {
     var hashMap = HashMap<String, CityAggregate>();
     for (var agg in aggregates) {
       if (!hashMap.containsKey(agg.cityId)) {
-        hashMap[agg.cityId] = agg;
-        p('Latest aggregate: ${agg.date} added to hashMap ${Emoji.appleRed}${Emoji.appleRed} ${agg.cityName}');
+        hashMap[agg.cityId!] = agg;
       }
     }
     aggregates = hashMap.values.map((e) => e).toList();
-    aggregates.sort((a, b) => a.cityName.compareTo(b.cityName));
+    aggregates.sort((a, b) => a.cityName!.compareTo(b.cityName!));
     p('HiveUtil: ${aggregates.length} filtered aggregates ${Emoji.appleRed}${Emoji.appleRed}');
   }
 

@@ -150,16 +150,16 @@ class _CityAggregateTableState extends State<CityAggregateTable> {
     rows.clear();
     switch(sortBy) {
       case 0:
-        widget.aggregates.sort((a,b) => b.totalSpent.compareTo(a.totalSpent));
+        widget.aggregates.sort((a,b) => b.totalSpent!.compareTo(a.totalSpent!));
         break;
       case 1:
-        widget.aggregates.sort((a,b) => a.cityName.compareTo(b.cityName));
+        widget.aggregates.sort((a,b) => a.cityName!.compareTo(b.cityName!));
         break;
       case 2:
-        widget.aggregates.sort((a,b) => b.averageRating.compareTo(a.averageRating));
+        widget.aggregates.sort((a,b) => b.averageRating!.compareTo(a.averageRating!));
         break;
       case 3:
-        widget.aggregates.sort((a,b) => b.numberOfEvents.compareTo(a.numberOfEvents));
+        widget.aggregates.sort((a,b) => b.numberOfEvents!.compareTo(a.numberOfEvents!));
         break;
     }
 

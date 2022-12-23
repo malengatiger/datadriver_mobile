@@ -1,30 +1,33 @@
 import 'package:hive/hive.dart';
+import 'package:universal_frontend/utils/emojis.dart';
+
+import '../utils/util.dart';
 part 'city_aggregate.g.dart';
 
 @HiveType(typeId: 1)
 class CityAggregate {
   @HiveField(0)
-  late double averageRating;
+  double? averageRating;
   @HiveField(1)
-  late String cityId;
+  String? cityId;
   @HiveField(2)
-  late String cityName;
+  String? cityName;
   @HiveField(3)
-  late String date;
+  String? date;
   @HiveField(4)
-  late int numberOfEvents;
+  int? numberOfEvents;
   @HiveField(5)
-  late int minutesAgo;
+  int? minutesAgo;
   @HiveField(6)
-  late double totalSpent;
+  double? totalSpent;
   @HiveField(7)
-  late int longDate;
+  int? longDate;
   @HiveField(8)
-  late double latitude;
+  double? latitude;
   @HiveField(9)
-  late double longitude;
+  double? longitude;
   @HiveField(10)
-  late double elapsedSeconds;
+  double? elapsedSeconds;
 
   CityAggregate({
     required this.averageRating,
@@ -41,23 +44,42 @@ class CityAggregate {
   });
 
   CityAggregate.fromJson(Map<String, dynamic> json) {
-    if (json['minutesAgo'] != null) {
-      minutesAgo = json['minutesAgo'];
+
+    try {
+      if (json['minutesAgo'] != null) {
+        minutesAgo = json['minutesAgo'];
+      }
+      if (json['elapsedSeconds'] != null) {
+        elapsedSeconds = json['elapsedSeconds'];
+      } else {
+        elapsedSeconds = 0.0;
+      }
+      averageRating = 0.0;
+      try {
+        if (json['averageRating'] == double.nan) {
+          p("${Emoji.redDot} avg rating is NaN: ${json['averageRating']}");
+        }
+        if (json['averageRating'] is double) {
+          averageRating = json['averageRating'];
+          //p("${Emoji.leaf} avg rating is COOL!: ${Emoji.leaf} averageRating: ${json['averageRating']}");
+        }
+      } catch (e) {
+        p('${Emoji.redDot} ${Emoji.redDot} $e');
+        p('${Emoji.redDot} ${Emoji.redDot} city aggregate json: check average rating $json');
+      }
+      cityId = json['cityId'];
+      cityName = json['cityName'];
+      date = json['date'];
+      numberOfEvents = json['numberOfEvents'];
+      totalSpent = json['totalSpent'];
+      longDate = json['longDate'];
+      latitude = json['latitude'];
+      longitude = json['longitude'];
+
+    } catch (e) {
+      p(e);
+      p('\n\n${Emoji.redDot}${Emoji.redDot} WHY DO WE FALL DOWN ??? json: $json');
     }
-    if (json['elapsedSeconds'] != null) {
-      elapsedSeconds = json['elapsedSeconds'];
-    } else {
-      elapsedSeconds = 0.0;
-    }
-    averageRating = json['averageRating'];
-    cityId = json['cityId'];
-    cityName = json['cityName'];
-    date = json['date'];
-    numberOfEvents = json['numberOfEvents'];
-    totalSpent = json['totalSpent'];
-    longDate = json['longDate'];
-    latitude = json['latitude'];
-    longitude = json['longitude'];
   }
 
   Map<String, dynamic> toJson() => <String, dynamic>{

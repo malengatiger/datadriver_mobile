@@ -63,7 +63,7 @@ class Event {
       required this.userId});
 
   Event.fromJson(Map<String, dynamic> json) {
-    // p(json);
+
     if (json['amount'] == null) {
       p('${Emoji.appleRed} ---------- amount is null, wtf?  cityId: ${json['cityId']} city: ${json['cityName']}');
       p(json);
@@ -79,8 +79,13 @@ class Event {
     rating = json['rating'];
     types = json['types'];
     vicinity = json['vicinity'];
-    latitude = json['latitude'];
-    longitude = json['longitude'];
+    if (json['latitude'] != null) {
+      latitude = json['latitude'];
+      longitude = json['longitude'];
+    } else {
+      p('.......... Latitude and longitude may be lacking, Sir!');
+    }
+
     date = json['date'];
     userId = json['userId'];
     firstName = json['firstName'];

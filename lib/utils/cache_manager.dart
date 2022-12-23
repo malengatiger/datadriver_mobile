@@ -7,13 +7,13 @@ import 'package:emoji_alert/emoji_alert.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import 'package:stream_channel/isolate_channel.dart';
 import 'package:universal_frontend/data_models/city_place.dart';
 import 'package:universal_frontend/data_models/dashboard_data.dart';
 import 'package:universal_frontend/services/cache_service.dart';
 import 'package:universal_frontend/services/data_service.dart';
 import 'package:universal_frontend/utils/providers.dart';
+import 'package:universal_frontend/utils/shared_prefs.dart';
 import 'package:universal_frontend/utils/util.dart';
 
 import '../data_models/cache_bag.dart';
@@ -90,7 +90,11 @@ class CacheManagerState extends State<CacheManager>
     await hiveUtil.addCities(cities: cities);
     p('\n\nCacheManager: ${Emoji.appleRed}${Emoji.appleRed}${Emoji.appleRed}'
         ' ${cities.length} cities cached in Hive');
-    setState(() {});
+    if (mounted) {
+      setState(() {
+
+      });
+    }
   }
 
   void _savePlaces(CacheMessage msg) async {
@@ -105,6 +109,7 @@ class CacheManagerState extends State<CacheManager>
   }
 
   void _saveEvents(CacheMessage msg) async {
+    var start = DateTime.now().millisecondsSinceEpoch;
     var events = <Event>[];
     String mJson = msg.events!;
     List m = jsonDecode(mJson);
@@ -113,15 +118,29 @@ class CacheManagerState extends State<CacheManager>
       events.add(k);
     }
     await hiveUtil.addEvents(events: events);
+
+    var end = DateTime.now().millisecondsSinceEpoch;
+    var ms = (end -start)/1000;
+    var mMsg = CacheMessage(message: '${Emoji.blueDot} ${events.length} Hive events cached',
+        statusCode: statusBusy, date: DateTime.now().toIso8601String(),
+        elapsedSeconds: ms, type: typeMessage);
+
+    if (mounted) {
+      setState(() {
+        messages.add(mMsg);
+      });
+    }
   }
 
   void _saveDashboards(CacheMessage msg) async {
     String mJson = msg.dashboards!;
     List m = jsonDecode(mJson);
+    var list = <DashboardData>[];
     for (var value in m) {
       var k = DashboardData.fromJson(value);
-      await hiveUtil.addDashboardData(data: k);
+      list.add(k);
     }
+    await hiveUtil.addDashboardDataList(dataList: list);
   }
 
   void _saveAggregates(CacheMessage msg) async {
@@ -146,28 +165,34 @@ class CacheManagerState extends State<CacheManager>
     p('${Emoji.diamond} CacheManager: cities added to Hive: ${cacheBag.cities.length}');
     await hiveUtil.addPlaces(places: cacheBag.places);
     p('${Emoji.diamond} CacheManager: places added to Hive: ${cacheBag.places.length}');
-    await hiveUtil.addEvents(events: cacheBag.events);
-    p('${Emoji.diamond} CacheManager: events added to Hive: ${cacheBag.events.length}');
+
     await hiveUtil.addAggregates(aggregates: cacheBag.aggregates);
     p('${Emoji.diamond} CacheManager: aggregates added to Hive: ${cacheBag.aggregates.length}');
-    for (var element in cacheBag.dashboards) {
-      await hiveUtil.addDashboardData(data: element);
-    }
+
+    await hiveUtil.addDashboardDataList(dataList: cacheBag.dashboards);
     p('${Emoji.diamond} CacheManager: dashboards added to Hive: ${cacheBag.dashboards.length}');
+
+    // await hiveUtil.addEvents(events: cacheBag.events);
+    // p('${Emoji.diamond} CacheManager: events added to Hive: ${cacheBag.events.length}');
+
     var end = DateTime.now().millisecondsSinceEpoch;
     var elapsed = double.parse('${(end-start)/1000}');
     p('\n\n${Emoji.appleGreen}${Emoji.appleGreen} CacheManager: big Hive cache job is complete! '
         '${Emoji.appleRed} Hive elapsed time: $elapsed seconds '
         '- ${DateTime.now().toIso8601String()}');
+
     var msg3 = CacheMessage(message: "💙💙Hive writes completed",
-        statusCode: STATUS_BUSY, date: DateTime.now().toIso8601String(),
-        elapsedSeconds: elapsed, type: TYPE_MESSAGE);
+        statusCode: statusBusy, date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed, type: typeMessage);
     messages.add(msg3);
+
     elapsedSeconds += elapsed;
     isCaching = false;
-    setState(() {
+    if (mounted) {
+      setState(() {
 
-    });
+      });
+    }
 
   }
 
@@ -185,6 +210,9 @@ class CacheManagerState extends State<CacheManager>
   double elapsedSeconds = 0.0;
   Future<void> _createIsolate({City? city, required int daysAgo}) async {
     try {
+      //add cacheConfig at start of caching ....
+
+      //build isolate artifacts
       _isolateStart = DateTime.now().millisecondsSinceEpoch;
       receivePort = ReceivePort();
       var errorReceivePort = ReceivePort();
@@ -195,62 +223,30 @@ class CacheManagerState extends State<CacheManager>
       channel.stream.listen((data) async {
         if (data != null) {
           p('${Emoji.heartBlue}${Emoji.heartBlue} '
-              'CaheManager: Received cacheService result ${Emoji.appleRed} CacheMessage, '
+              'CacheManager: Received cacheService result ${Emoji.appleRed} CacheMessage, '
               'statusCode: ${data['statusCode']} type: ${data['type']} msg: ${data['message']}');
           try {
             var msg = CacheMessage.fromJson(data);
             switch (msg.type) {
-              case TYPE_MESSAGE:
-                messages.add(msg);
-                if (msg.statusCode == STATUS_DONE) {
-                  p('\n${Emoji.redDot}${Emoji.redDot} '
-                      'CacheManager: received end message from CacheService, will remove loading ui '
-                      '${Emoji.heartBlue}${Emoji.heartBlue}');
-                  isolate.kill(priority: Isolate.immediate);
-                  p('${Emoji.diamond}${Emoji.diamond}${Emoji.diamond} isolate killed!!');
-                  //add cacheConfig
-                  await hiveUtil.addCacheConfig(cacheConfig: CacheConfig(
-                    longDate: DateTime.now().subtract(const Duration(minutes: 15)).millisecondsSinceEpoch,
-                    stringDate: DateTime.now().toIso8601String(),
-                    elapsedSeconds: msg.elapsedSeconds!,));
-
-                } else {
-                  if (msg.statusCode == STATUS_ERROR) {
-                    isolate.kill(priority: Isolate.immediate);
-                    p('${Emoji.diamond}${Emoji.diamond}${Emoji.diamond} isolate killed');
-                    p("We have an error. Do something!");
-                     var snackBar = SnackBar(
-                      content: Text('Error: ${msg.message}'),
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-                    isCaching = false;
-                    setState(() {
-
-                    });
-                  }
-                }
-                selectedCity = null;
-                setState(() {
-                  _isolateEnd = DateTime.now().millisecondsSinceEpoch;
-                  elapsedSeconds = ((_isolateEnd! - _isolateStart)/1000);
-                });
+              case typeMessage:
+                await _processMessage(msg);
                 break;
-              case TYPE_CITY:
+              case typeCity:
                 _saveCities(msg);
                 break;
-              case TYPE_PLACE:
+              case typePlace:
                 _savePlaces(msg);
                 break;
-              case TYPE_EVENT:
+              case typeEvent:
                 _saveEvents(msg);
                 break;
-              case TYPE_DASHBOARDS:
+              case typeDashboard:
                 _saveDashboards(msg);
                 break;
-              case TYPE_AGGREGATES:
+              case typeAggregate:
                 _saveAggregates(msg);
                 break;
-              case TYPE_CACHE_BAG:
+              case typeCacheBag:
                 _saveCacheBag(msg);
                 break;
               default:
@@ -275,16 +271,19 @@ class CacheManagerState extends State<CacheManager>
       if (url == null) {
         throw Exception("CacheManager: Crucial Url parameter missing! 🔴🔴");
       }
-      var config = await hiveUtil.getLatestCacheConfig();
+      var config = await SharedPrefs.getConfig();
       if (config == null) {
         var longDate = DateTime.now().subtract(const Duration(days:2)).millisecondsSinceEpoch;
         var stringDate = DateTime.now().subtract(const Duration(days:2)).toIso8601String();
         config = CacheConfig(longDate: longDate, stringDate: stringDate, elapsedSeconds: 0);
+        await SharedPrefs.saveConfig(config);
       }
+
+      var min = await SharedPrefs.getMinutesAgo();
       var params = CacheParameters(
           sendPort: receivePort.sendPort,
+          minutesAgo: min,
           url: url,
-          cacheConfig: config,
           city: city, useCacheService: true,);
 
       isolate = await Isolate.spawn<CacheParameters>(heavyTask, params,
@@ -318,6 +317,60 @@ class CacheManagerState extends State<CacheManager>
       });
     } catch (e) {
       p('${Emoji.redDot} we have a problem: $e ${Emoji.redDot} ${Emoji.redDot}');
+      if (e.toString().contains('FormatException')) {
+        await SharedPrefs.deleteConfig();
+      }
+    }
+  }
+
+  Future<void> _processMessage(CacheMessage msg) async {
+     if (msg.statusCode == statusDone) {
+      p('\n${Emoji.redDot}${Emoji.redDot} '
+          'CacheManager: received end message from CacheService, will remove loading ui '
+          '${Emoji.heartBlue}${Emoji.heartBlue}');
+      isolate.kill(priority: Isolate.immediate);
+      p('${Emoji.diamond}${Emoji.diamond}${Emoji.diamond} isolate killed!!');
+      isCaching = false;
+
+      if (msg.message.contains('No need to cache')) {
+        p('🍏 No need to cache so config not updated');
+      } else {
+        msg.message = '${Emoji.blueDot} ${msg.message}';
+        await SharedPrefs.saveConfig(CacheConfig(
+          longDate: DateTime
+              .now()
+              .millisecondsSinceEpoch,
+          stringDate: DateTime.now().toIso8601String(),
+          elapsedSeconds: 0.0,));
+      }
+      messages.add(msg);
+
+    } else {
+      if (msg.statusCode == statusError) {
+        isolate.kill(priority: Isolate.immediate);
+        p('${Emoji.diamond}${Emoji.diamond}${Emoji.diamond} isolate killed');
+        p("We have an error. Do something!");
+         var snackBar = SnackBar(
+          content: Text('Error: ${msg.message}'),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        isCaching = false;
+        setState(() {
+
+        });
+      } else {
+        msg.message = '${Emoji.appleRed} ${msg.message}';
+        messages.add(msg);
+      }
+    }
+    selectedCity = null;
+    if (mounted) {
+      setState(() {
+        _isolateEnd = DateTime
+            .now()
+            .millisecondsSinceEpoch;
+        elapsedSeconds = ((_isolateEnd! - _isolateStart) / 1000);
+      });
     }
   }
 

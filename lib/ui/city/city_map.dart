@@ -99,19 +99,19 @@ class CityMapState extends State<CityMap> with SingleTickerProviderStateMixin {
 
   _getCity() async {
     //get city from hive first
-    city = await hiveUtil.getCity(cityId: widget.aggregate.cityId);
-    city ??= await DataService.getCity(cityId: widget.aggregate.cityId);
+    city = await hiveUtil.getCity(cityId: widget.aggregate.cityId!);
+    city ??= await DataService.getCity(cityId: widget.aggregate.cityId!);
   }
 
   _getEvents() async {
     events = await hiveUtil.getCityEventsMinutesAgo(
-        cityId: widget.aggregate.cityId,
+        cityId: widget.aggregate.cityId!,
         minutesAgo: minutesAgo);
     if (events.isEmpty) {
       p('...... getting cityEvents via DataService ... cityId: ${widget
           .aggregate.cityId} ${Emoji.brocolli}');
       events = await DataService.getCityEvents(
-          cityId: widget.aggregate.cityId, minutesAgo: minutesAgo);
+          cityId: widget.aggregate.cityId!, minutesAgo: minutesAgo);
       p('$diamond $diamond CityMap: Found ${events
           .length} events on Firestore');
     }
@@ -175,9 +175,9 @@ class CityMapState extends State<CityMap> with SingleTickerProviderStateMixin {
   }
 
   _getPlaces() async {
-    places = await hiveUtil.getCityPlaces(cityId: widget.aggregate.cityId);
+    places = await hiveUtil.getCityPlaces(cityId: widget.aggregate.cityId!);
     if (places.isEmpty) {
-      places = await DataService.getCityPlaces(cityId: widget.aggregate.cityId);
+      places = await DataService.getCityPlaces(cityId: widget.aggregate.cityId!);
     }
     p('$diamond $diamond CityMap: Found ${places.length} city places cached or not');
   }
@@ -322,17 +322,17 @@ class CityMapState extends State<CityMap> with SingleTickerProviderStateMixin {
             child: Column(
               children: [
                 CityMapHeader(
-                  events: widget.aggregate.numberOfEvents,
-                  averageRating: widget.aggregate.averageRating,
+                  events: widget.aggregate.numberOfEvents!,
+                  averageRating: widget.aggregate.averageRating!,
                   onRequestRefresh: () {
                     _getData();
                   },
-                  totalAmount: widget.aggregate.totalSpent,
+                  totalAmount: widget.aggregate.totalSpent!,
                 ),
                 const SizedBox(
                   height: 8,
                 ),
-                MinutesAgoWidget(date: DateTime.parse(widget.aggregate.date)),
+                MinutesAgoWidget(date: DateTime.parse(widget.aggregate.date!)),
                 const SizedBox(
                   height: 16,
                 ),

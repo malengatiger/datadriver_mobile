@@ -1,21 +1,20 @@
-import 'dart:collection';
-import 'dart:convert';
 
 import 'package:universal_frontend/data_models/city_aggregate.dart';
 import 'package:universal_frontend/data_models/city_place.dart';
 import 'package:universal_frontend/data_models/dashboard_data.dart';
-import 'package:universal_frontend/data_models/event.dart';
 import 'package:universal_frontend/data_models/city.dart';
+
+import '../utils/util.dart';
+
 
 
 class CacheBag {
-  late String date;
-  late double elapsedSeconds;
-  late List<City> cities;
-  late List<CityPlace> places;
+  String? date;
+  double? elapsedSeconds;
   late List<DashboardData> dashboards;
   late List<CityAggregate> aggregates;
-  late List<Event> events;
+  late List<City> cities;
+  late List<CityPlace> places;
 
 
   CacheBag(
@@ -24,8 +23,7 @@ class CacheBag {
       required this.elapsedSeconds,
       required this.places,
       required this.dashboards,
-      required this.aggregates,
-      required this.events});
+      required this.aggregates});
 
   CacheBag.fromJson(Map<String, dynamic> json) {
     cities = [];
@@ -50,18 +48,7 @@ class CacheBag {
         aggregates.add(CityAggregate.fromJson(value));
       }
     }
-    events = [];
-    if (json['events']!= null) {
-      List list = json['events'];
-      for (var value in list) {
-        events.add(Event.fromJson(value));
-      }
-    }
-
-    date = json['date'];
-    if (json['elapsedSeconds'] != null) {
-      elapsedSeconds = json['elapsedSeconds'];
-    }
+    p('Somehow we don\'t come here! WTF!');
     places = [];
     if (json['places']!= null) {
       List list = json['places'];
@@ -69,6 +56,7 @@ class CacheBag {
         places.add(CityPlace.fromJson(value));
       }
     }
+
 
   }
 
@@ -90,15 +78,10 @@ class CacheBag {
        for (var value in places) {
          placesList.add(value.toJson());
        }
-       var eventsList = <dynamic>[];
-       for (var value in events) {
-         eventsList.add(value.toJson());
-       }
 
        mainMap['date'] =  date;
        mainMap['elapsedSeconds'] =  elapsedSeconds;
        mainMap['aggregates'] = aggList;
-       mainMap['events'] = eventsList;
        mainMap['dashboards'] = dashList;
        mainMap['places'] = placesList;
        mainMap['cities'] = citiesList;
