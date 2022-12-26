@@ -73,9 +73,9 @@ class GenerationPageState extends State<GenerationPage>
     super.dispose();
   }
 
-  final _intervalController = TextEditingController(text: '90');
-  final _maxController = TextEditingController(text: '2');
-  final _upperCountController = TextEditingController(text: '300');
+  final _intervalController = TextEditingController(text: '75');
+  final _maxController = TextEditingController(text: '3');
+  final _upperCountController = TextEditingController(text: '600');
   bool _isGeneration = false;
 
   void _showSnack({
@@ -110,17 +110,14 @@ class GenerationPageState extends State<GenerationPage>
   }
 
   void _sortByEvents() {
-    generationMessages.sort((a,b) => b.count!.compareTo(a.count!));
-    setState(() {
-
-    });
+    generationMessages.sort((a, b) => b.count!.compareTo(a.count!));
+    setState(() {});
     _scrollToTop();
   }
-  void _sortByCity() {
-    generationMessages.sort((a,b) => a.message!.compareTo(b.message!));
-    setState(() {
 
-    });
+  void _sortByCity() {
+    generationMessages.sort((a, b) => a.message!.compareTo(b.message!));
+    setState(() {});
     _scrollToTop();
   }
 
@@ -620,7 +617,8 @@ class GenerationPageState extends State<GenerationPage>
                                                     textStyle: Theme.of(context)
                                                         .textTheme
                                                         .bodySmall,
-                                                    fontWeight: FontWeight.w900),
+                                                    fontWeight:
+                                                        FontWeight.w900),
                                               ),
                                             ),
                                             const SizedBox(
@@ -630,9 +628,10 @@ class GenerationPageState extends State<GenerationPage>
                                               child: Text(
                                                   '${Emoji.blueDot} ${msg.message}',
                                                   style: GoogleFonts.lato(
-                                                      textStyle: Theme.of(context)
-                                                          .textTheme
-                                                          .bodySmall,
+                                                      textStyle:
+                                                          Theme.of(context)
+                                                              .textTheme
+                                                              .bodySmall,
                                                       fontWeight:
                                                           FontWeight.normal)),
                                             ),
@@ -771,6 +770,7 @@ class GenerationPageState extends State<GenerationPage>
       );
     }
   }
+
   void _scrollToTop() {
     if (_scrollController.hasClients) {
       final position = _scrollController.position.minScrollExtent;
@@ -808,34 +808,48 @@ class GenerationPageState extends State<GenerationPage>
             }
           } else {
             var msg = TimerMessage.fromJson(data);
-            if (msg.statusCode == TICK_RESULT) {
-              p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received a ${Emoji.redDot} TICK_RESULT; '
-                  'messages: ${msg.generationMessages!.length}');
-              var list = msg.generationMessages!;
-              generationMessages.addAll(list);
-              processTimerMessage(msg);
-            } else {
-              if (msg.statusCode == FINISHED) {
+
+            switch (msg.statusCode) {
+              case TICK_RESULT:
+                p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received a ${Emoji.redDot} TICK_RESULT; '
+                    'messages: ${msg.generationMessages!.length}');
+                var list = msg.generationMessages!;
+                generationMessages.addAll(list);
+                processTimerMessage(msg);
+                break;
+              case DASHBOARD_ADDED:
+                p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received a ${Emoji.redDot} DASHBOARD_ADDED '
+                    'message date: ${msg.dashboardData!.date}');
+                var db = msg.dashboardData;
+                if (db != null) {
+                  await hiveUtil.addDashboardDataList(dataList: [db]);
+                }
+                break;
+              case AGGREGATES_ADDED:
+                p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received a ${Emoji.redDot} AGGREGATES_ADDED '
+                    ' aggregates: ${msg.aggregates!.length}');
+                var aggregates = msg.aggregates;
+                if (aggregates != null) {
+                  await hiveUtil.addAggregates(aggregates: aggregates);
+                }
+                break;
+              case FINISHED:
                 isolate.kill();
                 var end = DateTime.now().millisecondsSinceEpoch;
                 var ms = end - _start;
                 _elapsedSeconds = ms / 1000;
                 p('${Emoji.leaf} ${Emoji.redDot}${Emoji.redDot}${Emoji.redDot} isolate has been killed!');
-                // //process and display messages
-                // if (msg.generationMessages != null &&
-                //     msg.generationMessages!.isNotEmpty) {
-                //   p('${Emoji.leaf} ${Emoji.leaf}${Emoji.leaf}${Emoji.leaf} '
-                //       'messages to display: ${msg.generationMessages!.length}');
-                //   generationMessages =_consolidateByCity(msg);
-                setState(() {
-                  _isGeneration = false;
-                });
+                if (mounted) {
+                  setState(() {
+                    _isGeneration = false;
+                  });
+                }
                 _animationController.forward().then((value) {
                   sendFinishedMessage();
                 });
-              }
-              generationMonitor.addMessage(msg);
+                break;
             }
+            generationMonitor.addMessage(msg);
           }
         } else {
           sendFinishedMessage();

@@ -1,4 +1,3 @@
-
 import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
@@ -8,6 +7,8 @@ import 'package:intl/intl.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:universal_frontend/data_models/city_aggregate.dart';
 import 'package:universal_frontend/services/api_service.dart';
+import 'package:universal_frontend/ui/charts/chart_page_view.dart';
+import 'package:universal_frontend/ui/charts/ratings_line_chart.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/aggregate_table.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:universal_frontend/utils/providers.dart';
@@ -16,7 +17,7 @@ import 'package:badges/badges.dart';
 import '../../services/timer_generation.dart';
 import '../../utils/hive_util.dart';
 import '../../utils/util.dart';
-import '../charts/aggregates_line_chart.dart';
+import '../charts/events_line_chart.dart';
 import '../city/city_map.dart';
 import '../dashboard/widgets/minutes_ago_widget.dart';
 import 'aggregates_map.dart';
@@ -59,6 +60,7 @@ class AggregatePageState extends State<AggregatePage>
     p('.... initState inside AggregatePage ${Emoji.redDot}');
     _getLocalData();
   }
+
   CityAggregate? firstAggregate;
 
   void _getLocalData() async {
@@ -85,14 +87,12 @@ class AggregatePageState extends State<AggregatePage>
       _animationController.forward().then((value) {
         _getDataQuietly();
       });
-
     } catch (e) {
       p('${Emoji.redDot}${Emoji.redDot} ERROR: $e');
       p(e);
       _getAggregates();
       return;
     }
-
   }
 
   Future<void> _getDataQuietly() async {
@@ -137,14 +137,14 @@ class AggregatePageState extends State<AggregatePage>
   }
 
   void _filterAggregates() {
-    var hashMap = HashMap<String,CityAggregate>();
+    var hashMap = HashMap<String, CityAggregate>();
     for (var agg in aggregates) {
       if (!hashMap.containsKey(agg.cityId)) {
         hashMap[agg.cityId!] = agg;
       }
     }
     aggregates = hashMap.values.map((e) => e).toList();
-    aggregates.sort((a,b) => a.cityName!.compareTo(b.cityName!));
+    aggregates.sort((a, b) => a.cityName!.compareTo(b.cityName!));
     p(' ${Emoji.appleRed}${Emoji.appleRed} '
         '${aggregates.length} filtered aggregates ${Emoji.appleRed}${Emoji.appleRed}');
   }
@@ -167,12 +167,13 @@ class AggregatePageState extends State<AggregatePage>
                 type: PageTransitionType.scale,
                 alignment: Alignment.bottomCenter,
                 duration: const Duration(milliseconds: 1000),
-                child: CityMap(aggregate: agg,)));
+                child: CityMap(
+                  aggregate: agg,
+                )));
         p('$appleGreen $appleGreen Did it happen?:  ${agg.cityName} ...');
         return "I am data";
         // throw Exception("Custom Error");
       });
-
     } catch (e) {
       p(e);
     }
@@ -190,11 +191,11 @@ class AggregatePageState extends State<AggregatePage>
                 type: PageTransitionType.scale,
                 alignment: Alignment.bottomCenter,
                 duration: const Duration(milliseconds: 1000),
-                child: AggregatesLineChart(aggregates: aggregates,)));
+                child: const EventsLineChart(
+                )));
         return "I am data";
         // throw Exception("Custom Error");
       });
-
     } catch (e) {
       p(e);
     }
@@ -281,13 +282,14 @@ class AggregatePageState extends State<AggregatePage>
                       children: [
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                          child: AnimatedBuilder(animation: _animationController,
-                              builder: (BuildContext context, Widget? child) {
-                                return FadeScaleTransition(
-                                  animation: _animationController,
-                                  child: child,
-                                );
-                              },
+                          child: AnimatedBuilder(
+                            animation: _animationController,
+                            builder: (BuildContext context, Widget? child) {
+                              return FadeScaleTransition(
+                                animation: _animationController,
+                                child: child,
+                              );
+                            },
                             child: Card(
                               elevation: 4,
                               shape: RoundedRectangleBorder(
@@ -300,13 +302,16 @@ class AggregatePageState extends State<AggregatePage>
                                   children: [
                                     Row(
                                       children: [
-                                         SizedBox(
+                                        SizedBox(
                                             width: 100,
                                             child: Text(
                                               'Total Cities:',
                                               style: GoogleFonts.lato(
-                                                  textStyle: Theme.of(context).textTheme.bodySmall,
-                                                  fontWeight: FontWeight.normal, fontSize: 11),
+                                                  textStyle: Theme.of(context)
+                                                      .textTheme
+                                                      .bodySmall,
+                                                  fontWeight: FontWeight.normal,
+                                                  fontSize: 11),
                                             )),
                                         const SizedBox(
                                           width: 12,
@@ -314,7 +319,9 @@ class AggregatePageState extends State<AggregatePage>
                                         Text(
                                           '${aggregates.length}',
                                           style: GoogleFonts.secularOne(
-                                              textStyle: Theme.of(context).textTheme.bodyMedium,
+                                              textStyle: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium,
                                               fontWeight: FontWeight.w900),
                                         ),
                                       ],
@@ -324,13 +331,16 @@ class AggregatePageState extends State<AggregatePage>
                                     ),
                                     Row(
                                       children: [
-                                         SizedBox(
+                                        SizedBox(
                                             width: 100,
                                             child: Text(
                                               'Total Amount:',
                                               style: GoogleFonts.lato(
-                                                  textStyle: Theme.of(context).textTheme.bodySmall,
-                                                  fontWeight: FontWeight.normal, fontSize: 11),
+                                                  textStyle: Theme.of(context)
+                                                      .textTheme
+                                                      .bodySmall,
+                                                  fontWeight: FontWeight.normal,
+                                                  fontSize: 11),
                                             )),
                                         const SizedBox(
                                           width: 12,
@@ -338,7 +348,9 @@ class AggregatePageState extends State<AggregatePage>
                                         Text(
                                           amt,
                                           style: GoogleFonts.secularOne(
-                                              textStyle: Theme.of(context).textTheme.bodyMedium,
+                                              textStyle: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium,
                                               fontWeight: FontWeight.w900),
                                         ),
                                       ],
@@ -348,13 +360,16 @@ class AggregatePageState extends State<AggregatePage>
                                     ),
                                     Row(
                                       children: [
-                                         SizedBox(
+                                        SizedBox(
                                             width: 100,
                                             child: Text(
                                               'Total Events:',
                                               style: GoogleFonts.lato(
-                                                  textStyle: Theme.of(context).textTheme.bodySmall,
-                                                  fontWeight: FontWeight.normal, fontSize: 11),
+                                                  textStyle: Theme.of(context)
+                                                      .textTheme
+                                                      .bodySmall,
+                                                  fontWeight: FontWeight.normal,
+                                                  fontSize: 11),
                                             )),
                                         const SizedBox(
                                           width: 12,
@@ -362,7 +377,9 @@ class AggregatePageState extends State<AggregatePage>
                                         Text(
                                           formattedEvents,
                                           style: GoogleFonts.secularOne(
-                                              textStyle: Theme.of(context).textTheme.bodyMedium,
+                                              textStyle: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium,
                                               fontWeight: FontWeight.w900),
                                         ),
                                       ],
@@ -378,8 +395,11 @@ class AggregatePageState extends State<AggregatePage>
                         ),
                         InkWell(
                           onTap: _getAggregates,
-                          child: firstAggregate== null? const SizedBox(): MinutesAgoWidget(date:
-                          DateTime.parse(firstAggregate!.date!).toLocal()),
+                          child: firstAggregate == null
+                              ? const SizedBox()
+                              : MinutesAgoWidget(
+                                  date: DateTime.parse(firstAggregate!.date!)
+                                      .toLocal()),
                         ),
                         const SizedBox(
                           height: 8,
@@ -388,7 +408,8 @@ class AggregatePageState extends State<AggregatePage>
                     )),
                 actions: [
                   IconButton(
-                      onPressed: _getAggregates, icon: const Icon(Icons.refresh)),
+                      onPressed: _getAggregates,
+                      icon: const Icon(Icons.refresh)),
                 ],
               ),
         backgroundColor: Theme.of(context).secondaryHeaderColor,
@@ -454,21 +475,32 @@ class AggregatePageState extends State<AggregatePage>
                       : Column(
                           children: [
                             kIsWeb //todo check!!!
-                                ?  SizedBox(
+                                ? SizedBox(
                                     height: 80,
-                                    child: MinutesAgoWidget(date: firstAggregate == null? DateTime.now() :
-                                    DateTime.parse(firstAggregate!.date!).toLocal(),),
+                                    child: MinutesAgoWidget(
+                                      date: firstAggregate == null
+                                          ? DateTime.now()
+                                          : DateTime.parse(
+                                                  firstAggregate!.date!)
+                                              .toLocal(),
+                                    ),
                                   )
-                                :  SizedBox(
+                                : SizedBox(
                                     height: 24,
                                     child: Column(
                                       children: [
-                                        Text('Average Rating and Total Spent',
+                                        Text(
+                                          'Average Rating and Total Spent',
                                           style: GoogleFonts.lato(
-                                              textStyle: Theme.of(context).textTheme.bodySmall,
-                                              fontWeight: FontWeight.normal, fontSize: 12),
+                                              textStyle: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall,
+                                              fontWeight: FontWeight.normal,
+                                              fontSize: 12),
                                         ),
-                                        const SizedBox(height: 8,),
+                                        const SizedBox(
+                                          height: 8,
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -498,7 +530,8 @@ class AggregatePageState extends State<AggregatePage>
                                             ),
                                             IconButton(
                                                 onPressed: _getAggregates,
-                                                icon: const Icon(Icons.refresh)),
+                                                icon:
+                                                    const Icon(Icons.refresh)),
                                             const SizedBox(
                                               width: 4,
                                             ),
@@ -519,7 +552,8 @@ class AggregatePageState extends State<AggregatePage>
                                             onSelected: (cityAggregate) {
                                               p('${Emoji.brocolli} city aggregate selected: ${cityAggregate.toJson()}');
                                               if (widget.onSelected != null) {
-                                                widget.onSelected!(cityAggregate);
+                                                widget
+                                                    .onSelected!(cityAggregate);
                                               }
                                             },
                                           )
@@ -544,28 +578,33 @@ class AggregatePageState extends State<AggregatePage>
                                                       color: Colors.white),
                                                 ),
                                                 child: ListView.builder(
-                                                    itemCount: aggregates.length,
-                                                    controller: listScrollController,
+                                                    itemCount:
+                                                        aggregates.length,
+                                                    controller:
+                                                        listScrollController,
                                                     itemBuilder:
                                                         (context, index) {
                                                       var agg = aggregates
                                                           .elementAt(index);
-                                                      var fm =
-                                                          NumberFormat.compact();
+                                                      var fm = NumberFormat
+                                                          .compact();
                                                       return Padding(
-                                                        padding: const EdgeInsets
-                                                                .symmetric(
-                                                            horizontal: 4),
+                                                        padding:
+                                                            const EdgeInsets
+                                                                    .symmetric(
+                                                                horizontal: 4),
                                                         child: PopupMenuButton(
                                                           elevation: 8,
                                                           // color: Colors.brown[50],
                                                           onSelected: (value) {
                                                             p('${Emoji.redDot} PopupMenuButton: onSelected: $value');
                                                           },
-                                                          itemBuilder: (context) {
+                                                          itemBuilder:
+                                                              (context) {
                                                             return [
                                                               PopupMenuItem(
-                                                                value: 'goToMap',
+                                                                value:
+                                                                    'goToMap',
                                                                 onTap: () {
                                                                   p('${Emoji.redDot} PopupMenuItem: city menu item tapped, goToMap: ${agg.cityName}');
                                                                   navigateToCityMap(
@@ -575,11 +614,12 @@ class AggregatePageState extends State<AggregatePage>
                                                                   title: Text(
                                                                     'Go to Map',
                                                                     style:
-                                                                    thinStyle,
+                                                                        thinStyle,
                                                                   ),
-                                                                  leading: const Icon(
-                                                                      Icons
-                                                                          .location_on),
+                                                                  leading:
+                                                                      const Icon(
+                                                                          Icons
+                                                                              .location_on),
                                                                 ),
                                                               ),
                                                               PopupMenuItem(
@@ -590,9 +630,10 @@ class AggregatePageState extends State<AggregatePage>
                                                                   _sortByAmount();
                                                                 },
                                                                 child: ListTile(
-                                                                  leading: const Icon(
-                                                                      Icons
-                                                                          .sort_by_alpha),
+                                                                  leading:
+                                                                      const Icon(
+                                                                          Icons
+                                                                              .sort_by_alpha),
                                                                   title: Text(
                                                                     'Sort By Amount',
                                                                     style:
@@ -608,9 +649,10 @@ class AggregatePageState extends State<AggregatePage>
                                                                   _sortByName();
                                                                 },
                                                                 child: ListTile(
-                                                                  leading: const Icon(
-                                                                      Icons
-                                                                          .sort_by_alpha),
+                                                                  leading:
+                                                                      const Icon(
+                                                                          Icons
+                                                                              .sort_by_alpha),
                                                                   title: Text(
                                                                     'Sort By Name',
                                                                     style:
@@ -626,9 +668,10 @@ class AggregatePageState extends State<AggregatePage>
                                                                   _sortByRating();
                                                                 },
                                                                 child: ListTile(
-                                                                  leading: const Icon(
-                                                                      Icons
-                                                                          .sort_by_alpha),
+                                                                  leading:
+                                                                      const Icon(
+                                                                          Icons
+                                                                              .sort_by_alpha),
                                                                   title: Text(
                                                                     'Sort By Rating',
                                                                     style:
@@ -656,12 +699,10 @@ class AggregatePageState extends State<AggregatePage>
                                                                   SizedBox(
                                                                       width: 40,
                                                                       child: Text(
-                                                                          agg.averageRating!
-                                                                              .toStringAsFixed(
-                                                                                  1),
+                                                                          agg.averageRating!.toStringAsFixed(
+                                                                              1),
                                                                           style: const TextStyle(
-                                                                              fontWeight:
-                                                                                  FontWeight.bold,
+                                                                              fontWeight: FontWeight.bold,
                                                                               color: Colors.blue))),
                                                                   // SizedBox(
                                                                   //     width: 60,
@@ -671,14 +712,17 @@ class AggregatePageState extends State<AggregatePage>
                                                                   //             fontWeight: FontWeight
                                                                   //                 .bold))),
                                                                   SizedBox(
-                                                                      width: 80,
-                                                                      child: Text(
-                                                                          fm.format(agg
-                                                                              .totalSpent),
-                                                                        style: GoogleFonts.secularOne(
-                                                                            textStyle: Theme.of(context).textTheme.bodyMedium,
-                                                                            fontWeight: FontWeight.w900),
-                                                                      ),
+                                                                    width: 80,
+                                                                    child: Text(
+                                                                      fm.format(
+                                                                          agg.totalSpent),
+                                                                      style: GoogleFonts.secularOne(
+                                                                          textStyle: Theme.of(context)
+                                                                              .textTheme
+                                                                              .bodyMedium,
+                                                                          fontWeight:
+                                                                              FontWeight.w900),
+                                                                    ),
                                                                   ),
                                                                   Flexible(
                                                                     child: Text(
@@ -761,14 +805,20 @@ class AggregatePageState extends State<AggregatePage>
   void navigateToCityList() {}
 
   void navigateToCharts() {
+    // Navigator.push(
+    //     context,
+    //     PageTransition(
+    //         type: PageTransitionType.scale,
+    //         alignment: Alignment.bottomCenter,
+    //         duration: const Duration(milliseconds: 1000),
+    //         child: AggregatesLineChart(
+    //         )));
     Navigator.push(
         context,
         PageTransition(
             type: PageTransitionType.scale,
             alignment: Alignment.bottomCenter,
             duration: const Duration(milliseconds: 1000),
-            child: AggregatesLineChart(
-              aggregates: aggregates,
-            )));
+            child: const ChartPageView()));
   }
 }

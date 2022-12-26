@@ -318,6 +318,7 @@ Future<void> main() async {
   }
   //cache data since last time
   //_createIsolate(daysAgo: 2);
+  hiveUtil.fixRatings();
   // wrap the entire app with a ProviderScope so that widgets
   // will be able to read providers
   if (kIsWeb) {

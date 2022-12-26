@@ -1,5 +1,6 @@
 import 'dart:collection';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
@@ -49,7 +50,14 @@ class HiveUtil {
       try {
         _boxCollection = await BoxCollection.open(
           'DataBoxOneA02', // Name of your database
-          {'events', 'aggregates', 'dashboardData', 'cities', 'cityPlaces', 'cacheConfigs'},
+          {
+            'events',
+            'aggregates',
+            'dashboardData',
+            'cities',
+            'cityPlaces',
+            'cacheConfigs'
+          },
           // Names of your boxes
           path: file
               .path, // Path where to store your boxes (Only used in Flutter / Dart IO)
@@ -107,7 +115,8 @@ class HiveUtil {
         _eventBox = await _boxCollection!.openBox<Event>('events');
         _cityBox = await _boxCollection!.openBox<City>('cities');
         _cityPlaceBox = await _boxCollection!.openBox<CityPlace>('cityPlaces');
-        _cacheConfigBox = await _boxCollection!.openBox<CacheConfig>('cacheConfigs');
+        _cacheConfigBox =
+            await _boxCollection!.openBox<CacheConfig>('cacheConfigs');
 
         _isInitialized = true;
         p('${Emoji.peach}${Emoji.peach}${Emoji.peach}${Emoji.peach}'
@@ -132,7 +141,8 @@ class HiveUtil {
     return null;
   }
 
-  Future<void> addDashboardDataList({required List<DashboardData> dataList}) async {
+  Future<void> addDashboardDataList(
+      {required List<DashboardData> dataList}) async {
     await _init();
 
     for (var element in dataList) {
@@ -140,37 +150,85 @@ class HiveUtil {
         await _addDashboardData(data: element);
       });
     }
-    p('${Emoji.pear} HiveUtil: ${dataList.length} dashboards cached' );
+    p('${Emoji.pear} HiveUtil: ${dataList.length} dashboards cached');
   }
+
   Future<void> _addDashboardData({required DashboardData data}) async {
     await _init();
-    DateTime dt = DateTime.parse(data.date);
-    var key = '${dt.millisecondsSinceEpoch}';
+    var key = '${data.longDate}';
     await _dashboardDataBox!.put(key, data);
   }
 
-  Future<List<DashboardData>> getDashboardDataList(int numberOfBoards) async {
+  Future<List<DashboardData>> getDashboardDataList(
+      {required DateTime date}) async {
     await _init();
+    var requiredDay = date.day;
     var keys = await _dashboardDataBox!.getAllKeys();
-    p('${Emoji.peach}${Emoji.peach}${Emoji.peach} hive dash keys: ${keys.length}');
-    keys.sort((a, b) => b.compareTo(a));
+    p('${Emoji.peach}${Emoji.peach}${Emoji.peach} hive dash keys: ${keys.length}, requiredDay: $requiredDay');
+    keys.sort((a, b) => a.compareTo(b));
     var list = <DashboardData>[];
-    int cnt = 0;
     for (var key in keys) {
       var dd = await _dashboardDataBox!.get(key);
-      if (cnt < numberOfBoards) {
-        if (dd != null) {
+      if (dd != null) {
+        var dt = DateTime.parse(dd.date);
+        var mDay = dt.day;
+        if (requiredDay == mDay) {
           list.add(dd);
-          cnt++;
-
         }
       }
-
     }
 
     list.sort((a, b) => a.longDate.compareTo(b.longDate));
+    p('HiveUtil: ${Emoji.appleGreen} found ${list.length} '
+        'dashboards for this date: ${date.toIso8601String()}');
+    for (var value in list) {
+      p('${Emoji.appleGreen} Dashboard: ${value.date} - events: ${value.events}, avg: ${value.averageRating} ');
+    }
 
     return list;
+  }
+
+  var random = Random(DateTime.now().millisecondsSinceEpoch);
+
+  final averages = [3.4,4.0,4.1,4.2,3.3,4.6,2.0,3.1,4.4,4.1,2.5,3.6,4.0,4.2,2,5,2,4.2,3.2,3.3,4.2,2.3,1.6,1.8,4.6,4.1,3.4,3.2,
+    2.6,3.2,3.6,3.3,2.8,2.9,4.1,3.2,3.4,4.2,2.3,2.2,3.5,4.6,4.8,2.2,2.4,3.4,3.8,3.9,4.0,4.3,5.0,4.1,2.0,2.3,1.9, 1.8,4.3];
+  Future fixRatings() async {
+    var dates = <DateTime>[];
+    dates.add(DateTime.now().subtract(const Duration(days: 10)));
+    dates.add(DateTime.now().subtract(const Duration(days: 9)));
+    dates.add(DateTime.now().subtract(const Duration(days: 8)));
+    dates.add(DateTime.now().subtract(const Duration(days: 7)));
+    dates.add(DateTime.now().subtract(const Duration(days: 6)));
+    dates.add(DateTime.now().subtract(const Duration(days: 5)));
+    dates.add(DateTime.now().subtract(const Duration(days: 4)));
+    dates.add(DateTime.now().subtract(const Duration(days: 3)));
+    dates.add(DateTime.now().subtract(const Duration(days: 2)));
+    dates.add(DateTime.now().subtract(const Duration(days: 1)));
+    dates.add(DateTime.now());
+    
+    var start = DateTime.now().millisecondsSinceEpoch;
+    await _init();
+    var cnt = 0;
+    p('\n\n🔵🔵🔵🔵🔵🔵 Processing dashboards for date: ${dates.length} dates');
+    for (var date in dates) {
+      var list = await getDashboardDataList(date: date);
+      p('\n🔵🔵 Processing ${list.length} dashboards for date: ${date.toIso8601String()}');
+      random = Random(DateTime.now().millisecondsSinceEpoch);
+      for (var dashboard in list) {
+        var index = random.nextInt(averages.length - 1);
+        var avg = averages.elementAt(index);
+        dashboard.averageRating = double.parse('$avg');
+        var key = '${dashboard.longDate}';
+        await _dashboardDataBox!.put(key, dashboard);
+        p('🍊updated dashboard date: ${dashboard.date} 🍊averageRating: ${dashboard.averageRating.toStringAsFixed(2)} for ${dashboard.events} events');
+        cnt++;
+        //
+      }
+    }
+    var end = DateTime.now().millisecondsSinceEpoch;
+    var eMs = start - end;
+    var eSecs = eMs / 1000;
+    p('\n\n🍊🍊🍊Updated a total of $cnt dashboards; elapsed seconds: $eSecs');
   }
 
   Future<void> addAggregates({required List<CityAggregate> aggregates}) async {
@@ -210,20 +268,21 @@ class HiveUtil {
         var keySplits = key.split('*');
         var stringLongDate = keySplits[1];
 
-        var keyDate = DateTime.fromMillisecondsSinceEpoch(int.parse(stringLongDate));
+        var keyDate =
+            DateTime.fromMillisecondsSinceEpoch(int.parse(stringLongDate));
         var now = DateTime.now();
-        var deltaMs = now.millisecondsSinceEpoch - keyDate.millisecondsSinceEpoch;
-        var deltaMinutes = deltaMs/1000~/60;
+        var deltaMs =
+            now.millisecondsSinceEpoch - keyDate.millisecondsSinceEpoch;
+        var deltaMinutes = deltaMs / 1000 ~/ 60;
         if (deltaMinutes <= minutesAgo) {
           var agg = await _aggregateBox!.get(key);
           list.add(agg!);
         }
-
       }
       p('🔷🔷🔷🔷HiveUtil: Aggregates found in cache: ${list.length}');
       _filterAggregates(list);
       var end = DateTime.now().millisecondsSinceEpoch;
-      p('🔷🔷🔷🔷HiveUtil: Aggregates search; elapsed milliseconds: ${(end-start)}');
+      p('🔷🔷🔷🔷HiveUtil: Aggregates search; elapsed milliseconds: ${(end - start)}');
 
       return list;
     }

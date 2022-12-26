@@ -205,6 +205,7 @@ class CacheManagerState extends State<CacheManager>
     });
 
     _createIsolate(daysAgo: daysAgo);
+    _animationController.forward();
   }
 
   double elapsedSeconds = 0.0;
@@ -222,7 +223,7 @@ class CacheManagerState extends State<CacheManager>
           IsolateChannel(receivePort, receivePort.sendPort);
       channel.stream.listen((data) async {
         if (data != null) {
-          p('${Emoji.heartBlue}${Emoji.heartBlue} '
+          p('${Emoji.heartBlue}${Emoji.heartBlue}${Emoji.heartBlue} '
               'CacheManager: Received cacheService result ${Emoji.appleRed} CacheMessage, '
               'statusCode: ${data['statusCode']} type: ${data['type']} msg: ${data['message']}');
           try {
@@ -681,8 +682,10 @@ class CacheManagerState extends State<CacheManager>
             setState(() {
               selectedCity = null;
             });
-            _animationController.forward();
-            _startCache();
+            _animationController.reverse().then((value) {
+              _startCache();
+            });
+
           },
           child: isCaching
               ? const SizedBox(
