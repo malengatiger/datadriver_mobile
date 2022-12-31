@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:universal_frontend/ui/charts/chart_title.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:universal_frontend/utils/hive_util.dart';
 
 import '../../data_models/dashboard_data.dart';
+import '../../utils/city_cache_manager.dart';
 import '../../utils/util.dart';
 
 class EventsLineChart extends StatefulWidget {
@@ -50,7 +52,7 @@ class EventsLineChartState extends State<EventsLineChart>
   }
 
   void _getData() async {
-    _dashboards = await hiveUtil.getDashboardDataList(date: DateTime.now());
+    _dashboards = await hiveUtil.getDashboardDataList(date: DateTime.now().subtract(Duration(days: days)));
     //process events, break into hours and events spots
     _dashboards.sort((a, b) => a.longDate.compareTo(b.longDate));
     _buildLineChartData();
@@ -301,6 +303,12 @@ class EventsLineChartState extends State<EventsLineChart>
       );
 
   bool isPortrait = false;
+  int days = 0;
+  
+  void _onDaysSelected(int days) {
+    this.days = days;
+    _getData();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -308,10 +316,7 @@ class EventsLineChartState extends State<EventsLineChart>
       child: Scaffold(
         backgroundColor: Theme.of(context).secondaryHeaderColor,
         appBar: AppBar(
-          title: const Text(
-            'Events Chart',
-            style: TextStyle(fontSize: 12),
-          ),
+          title: ChartTitle(days: days, onSelected: _onDaysSelected, title: 'Events Chart'),
           actions: [
             IconButton(
                 onPressed: () {

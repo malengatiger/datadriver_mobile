@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:universal_frontend/data_models/city_aggregate.dart';
 import 'package:universal_frontend/ui/generation/generation_page.dart';
+import 'package:universal_frontend/utils/providers.dart';
 
 import '../data_models/city.dart';
 import '../data_models/dashboard_data.dart';
@@ -14,7 +15,7 @@ import '../utils/emojis.dart';
 import '../utils/util.dart';
 
 const FINISHED = 200, PROCESSED_CITY = 201, error = 500, TICK_RESULT = 202,
-    DASHBOARD_ADDED = 203, AGGREGATES_ADDED = 204;
+    DASHBOARD_ADDED = 203, AGGREGATES_ADDED = 204, PROCESSED_EVENTS = 205;
 
 class TimerMessage {
   late String date, message;
@@ -160,11 +161,10 @@ class TimerGeneration {
 
       if (timer.tick > params.maxTimerTicks) {
         p('${Emoji.diamond}${Emoji.diamond} Generator: Timer tick maximum ${params.maxTimerTicks} has been reached:: ${timer.tick} ${Emoji.diamond} , ... stopping work!');
+        p('${Emoji.diamond}${Emoji.diamond} Generator: cancelling Timer ...');
+        _timer.cancel();
 
-        var end = DateTime.now().millisecondsSinceEpoch;
-        var minutes = (end-start)/1000/60;
-
-        await _processEndOfGeneration(minutesAgo: (minutes + 2.0).toInt(), url: params.url);
+        // await _processEndOfGeneration(minutesAgo: minutesAgo, url: params.url);
 
         var message = TimerMessage(
             date: DateTime.now().toIso8601String(),
@@ -175,7 +175,7 @@ class TimerGeneration {
             generationMessages: messages);
 
         sendPort.send(message.toJson());
-        _timer.cancel();
+
 
       } else {
         var list = await _generateEventsByRandomCities(params: params);
@@ -198,7 +198,7 @@ class TimerGeneration {
 
   Future _processEndOfGeneration({required int minutesAgo, required String url}) async {
     p('${Emoji.heartOrange}${Emoji.heartOrange} _processEndOfGeneration starting ...');
-    var dash = await addDashboard(minutesAgo: minutesAgo, url: url);
+    var dash = await _addDashboard(minutesAgo: minutesAgo, url: url);
     var message = TimerMessage(
         date: DateTime.now().toIso8601String(),
         message:
@@ -212,7 +212,7 @@ class TimerGeneration {
     p('${Emoji.heartOrange}${Emoji.heartOrange} Sending dashboard data via sendPort ..');
     sendPort.send(message.toJson());
 
-    var aggregates = await createAggregatesForAllCities(minutesAgo: minutesAgo, url: url);
+    var aggregates = await _createAggregatesForAllCities(minutesAgo: minutesAgo, url: url);
     var message2 = TimerMessage(
         date: DateTime.now().toIso8601String(),
         message:
@@ -231,14 +231,15 @@ class TimerGeneration {
       _cities = await getCities(params.url);
     }
     var max = _cities.length / 2;
+
     int numberOfCities = random.nextInt(max.toInt());
-    if (numberOfCities < 10) numberOfCities = 10;
+    if (numberOfCities == 0) numberOfCities = 4;
 
     List<City> selectedCities = _getSelectedCities(numberOfCities);
     var buf = StringBuffer();
     var cnt = 0;
-    for (var value in selectedCities) {
-      buf.write(value.id);
+    for (var city in selectedCities) {
+      buf.write(city.id);
       if (cnt < selectedCities.length - 1) {
         buf.write(',');
       }
@@ -334,7 +335,7 @@ class TimerGeneration {
     return null;
   }
 
-  Future<DashboardData?> addDashboard(
+  Future<DashboardData?> _addDashboard(
       {required int minutesAgo, required String url}) async {
     var client = http.Client();
     var suffix1 = 'addDashboardData?minutesAgo=$minutesAgo';
@@ -354,7 +355,7 @@ class TimerGeneration {
     }
     return null;
   }
-  Future<List<CityAggregate>?> createAggregatesForAllCities(
+  Future<List<CityAggregate>?> _createAggregatesForAllCities(
       {required int minutesAgo, required String url}) async {
     var client = http.Client();
     var suffix1 = 'createAggregatesForAllCities?minutesAgo=$minutesAgo';

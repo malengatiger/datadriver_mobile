@@ -33,13 +33,14 @@ class GenerationMonitor {
 
   void addMessage(TimerMessage timerMessage) {
     p('${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen} '
-        'adding timer message to stream ...');
+        'GenerationMonitor: adding timer message to stream timerStream ...');
+
     _controller.sink.add(timerMessage);
   }
 
   void sendStopMessage() {
     p('${Emoji.appleGreen}${Emoji.appleGreen}${Emoji.appleGreen} '
-        'adding stop timer message to stream ...');
+        'GenerationMonitor: adding stop timer message to stream ...');
     _controller2.sink.add('Stop');
   }
 }

@@ -10,6 +10,7 @@ import 'package:universal_frontend/services/api_service.dart';
 import 'package:universal_frontend/ui/charts/chart_page_view.dart';
 import 'package:universal_frontend/ui/charts/ratings_line_chart.dart';
 import 'package:universal_frontend/ui/dashboard/widgets/aggregate_table.dart';
+import 'package:universal_frontend/utils/city_cache_manager.dart';
 import 'package:universal_frontend/utils/emojis.dart';
 import 'package:universal_frontend/utils/providers.dart';
 import 'package:animations/animations.dart';
@@ -178,6 +179,31 @@ class AggregatePageState extends State<AggregatePage>
       p(e);
     }
   }
+
+  void navigateToCityCache(BuildContext context, CityAggregate agg) {
+    p('.......... navigation to city cache ..... ${agg.cityName}');
+    try {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        p('$appleGreen $appleGreen trying to launch city cache after delay:  ${agg.cityName} ... ${DateTime.now().toIso8601String()}');
+
+        Navigator.push(
+            context,
+            PageTransition(
+                type: PageTransitionType.scale,
+                alignment: Alignment.bottomCenter,
+                duration: const Duration(milliseconds: 1000),
+                child:  CityCacheManager(
+                  cityId: agg.cityId,
+                )));
+        return "I am data";
+        // throw Exception("Custom Error");
+      });
+    } catch (e) {
+      p(e);
+    }
+
+  }
+
 
   void navigateToAggregatesLineChart() {
     p('$appleGreen $appleGreen Navigating to AggregatesLineChart:  ${aggregates.length} aggregates');
@@ -620,6 +646,25 @@ class AggregatePageState extends State<AggregatePage>
                                                                       const Icon(
                                                                           Icons
                                                                               .location_on),
+                                                                ),
+                                                              ),
+                                                              PopupMenuItem(
+                                                                value:
+                                                                'goToCache',
+                                                                onTap: () {
+                                                                  p('${Emoji.redDot} PopupMenuItem: city menu item tapped, goToCache: ${agg.cityName}');
+                                                                  navigateToCityCache(context, agg);
+                                                                },
+                                                                child: ListTile(
+                                                                  title: Text(
+                                                                    'Go to City Cache',
+                                                                    style:
+                                                                    thinStyle,
+                                                                  ),
+                                                                  leading:
+                                                                  const Icon(
+                                                                      Icons
+                                                                          .data_saver_on),
                                                                 ),
                                                               ),
                                                               PopupMenuItem(

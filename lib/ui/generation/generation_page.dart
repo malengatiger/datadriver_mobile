@@ -73,9 +73,9 @@ class GenerationPageState extends State<GenerationPage>
     super.dispose();
   }
 
-  final _intervalController = TextEditingController(text: '75');
-  final _maxController = TextEditingController(text: '3');
-  final _upperCountController = TextEditingController(text: '600');
+  final _intervalController = TextEditingController(text: '60');
+  final _maxTicksController = TextEditingController(text: '5');
+  final _upperCountController = TextEditingController(text: '450');
   bool _isGeneration = false;
 
   void _showSnack({
@@ -305,7 +305,7 @@ class GenerationPageState extends State<GenerationPage>
                               ),
                               selectedCity == null
                                   ? TextFormField(
-                                      controller: _maxController,
+                                      controller: _maxTicksController,
                                       keyboardType: const TextInputType
                                           .numberWithOptions(),
                                       style: GoogleFonts.secularOne(
@@ -610,7 +610,7 @@ class GenerationPageState extends State<GenerationPage>
                                               width: 8,
                                             ),
                                             SizedBox(
-                                              width: 40,
+                                              width: 48,
                                               child: Text(
                                                 fm.format(msg.count),
                                                 style: GoogleFonts.secularOne(
@@ -738,7 +738,7 @@ class GenerationPageState extends State<GenerationPage>
         city: selectedCity,
         intervalInSeconds: int.parse(_intervalController.value.text),
         upperCount: int.parse(_upperCountController.value.text),
-        maxTimerTicks: int.parse(_maxController.value.text));
+        maxTimerTicks: int.parse(_maxTicksController.value.text));
 
     generationMessages.clear();
     _createIsolate(params: params);
@@ -796,7 +796,6 @@ class GenerationPageState extends State<GenerationPage>
       IsolateChannel channel =
           IsolateChannel(receivePort, receivePort.sendPort);
       channel.stream.listen((data) async {
-        p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received msg ...');
         if (data != null) {
           if (data is String) {
             if (data == 'stop') {
@@ -834,6 +833,8 @@ class GenerationPageState extends State<GenerationPage>
                 }
                 break;
               case FINISHED:
+                p('${Emoji.heartBlue}${Emoji.heartBlue} Channel received a ${Emoji.redDot} FINISHED '
+                    'message ');
                 isolate.kill();
                 var end = DateTime.now().millisecondsSinceEpoch;
                 var ms = end - _start;
@@ -844,9 +845,11 @@ class GenerationPageState extends State<GenerationPage>
                     _isGeneration = false;
                   });
                 }
-                _animationController.forward().then((value) {
-                  sendFinishedMessage();
-                });
+                sendFinishedMessage();
+                if (mounted) {
+                  _animationController.reset();
+                  _animationController.forward();
+                }
                 break;
             }
             generationMonitor.addMessage(msg);

@@ -10,6 +10,7 @@ import 'package:universal_frontend/utils/hive_util.dart';
 
 import '../../data_models/dashboard_data.dart';
 import '../../utils/util.dart';
+import 'chart_title.dart';
 import 'events_line_chart.dart';
 
 class RatingsLineChart extends StatefulWidget {
@@ -48,12 +49,16 @@ class RatingsLineChartState extends State<RatingsLineChart>
     super.dispose();
   }
 
+  int days = 0;
   void _getData() async {
-    _dashboards = await hiveUtil.getDashboardDataList(date: DateTime.now());
-    //process events, break into hours and events spots
+    _dashboards = await hiveUtil.getDashboardDataList(date: DateTime.now().subtract(Duration(days: days)));
     _dashboards.sort((a, b) => a.longDate.compareTo(b.longDate));
     _buildLineChartData();
     setState(() {});
+  }
+  void _onDaysSelected(int days) {
+    this.days = days;
+    _getData();
   }
 
   LineChartData _buildLineChartData() {
@@ -307,10 +312,7 @@ class RatingsLineChartState extends State<RatingsLineChart>
       child: Scaffold(
         backgroundColor: Theme.of(context).secondaryHeaderColor,
         appBar: AppBar(
-          title: const Text(
-            'Ratings Chart',
-            style: TextStyle(fontSize: 12),
-          ),
+          title: ChartTitle(days: days, onSelected: _onDaysSelected, title: 'Ratings Chart'),
           actions: [
             IconButton(
                 onPressed: () {

@@ -13,6 +13,7 @@ import 'package:universal_frontend/ui/dashboard/widgets/minutes_ago_widget.dart'
 import 'package:universal_frontend/ui/dashboard/widgets/time_chooser.dart';
 import 'package:universal_frontend/ui/generation/generation_page.dart';
 import 'package:universal_frontend/utils/cache_manager.dart';
+import 'package:universal_frontend/utils/city_cache_manager.dart';
 
 import '../../services/generation_monitor.dart';
 import '../../utils/emojis.dart';
@@ -124,6 +125,7 @@ class DashboardMobileState extends State<DashboardMobile>
   void _getLocalData() async {
     p('${Emoji.brocolli}${Emoji.brocolli}${Emoji.brocolli}'
         ' _getLocalData: ... getting latest dashboard data from hive.............');
+
     setState(() {
       showGenerator = true;
     });
@@ -270,9 +272,7 @@ class DashboardMobileState extends State<DashboardMobile>
           actions: [
             IconButton(
               onPressed: () {
-                setState(() {
-                  showTimeChooser = true;
-                });
+                _navigateToCityEventsCache();
               },
               icon: const FaIcon(
                 FontAwesomeIcons.clock,
@@ -413,7 +413,7 @@ class DashboardMobileState extends State<DashboardMobile>
         }
         break;
       case 2:
-        _navigateToACityList();
+        _navigateToCache();
     }
   }
 
@@ -427,7 +427,7 @@ class DashboardMobileState extends State<DashboardMobile>
             child: const AggregatePage()));
   }
 
-  void _navigateToACityList() {
+  void _navigateToCache() {
     Navigator.push(
         context,
         PageTransition(
@@ -435,6 +435,17 @@ class DashboardMobileState extends State<DashboardMobile>
             alignment: Alignment.bottomCenter,
             duration: const Duration(milliseconds: 1000),
             child: const CacheManager()));
+
+
+  }
+  void _navigateToCityEventsCache() {
+    Navigator.push(
+        context,
+        PageTransition(
+            type: PageTransitionType.scale,
+            alignment: Alignment.bottomCenter,
+            duration: const Duration(milliseconds: 1000),
+            child: const CityCacheManager()));
 
 
   }

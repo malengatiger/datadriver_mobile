@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:hive/hive.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:universal_frontend/data_models/cache_config.dart';
 import 'package:universal_frontend/data_models/city.dart';
@@ -45,11 +46,11 @@ class HiveUtil {
     if (!_isInitialized) {
       p('${Emoji.peach}${Emoji.peach}${Emoji.peach} ... Creating a Hive box collection');
       var appDir = await getApplicationDocumentsDirectory();
-      File file = File('${appDir.path}/db1a.file');
+      File file = File('${appDir.path}/db1b.file');
 
       try {
         _boxCollection = await BoxCollection.open(
-          'DataBoxOneA02', // Name of your database
+          'DataBoxOneA03', // Name of your database
           {
             'events',
             'aggregates',
@@ -188,6 +189,40 @@ class HiveUtil {
     return list;
   }
 
+  Future<List<DashboardData>> getDashboardDataListByHours(
+      { int? hours}) async {
+    await _init();
+    hours ??= 24;
+    var keys = await _dashboardDataBox!.getAllKeys();
+    p('${Emoji.peach}${Emoji.peach}${Emoji.peach} hive dash keys: ${keys.length}, hours: $hours');
+    keys.sort((a, b) => b.compareTo(a));
+
+    var firstKey = keys.elementAt(0);
+    var latestDate = DateTime.fromMillisecondsSinceEpoch(int.parse(firstKey));
+    var firstDate = latestDate.subtract(Duration(hours: hours));
+
+    var list = <DashboardData>[];
+    for (var key in keys) {
+      var dd = await _dashboardDataBox!.get(key);
+      if (dd != null) {
+        var dt = DateTime.parse(dd.date);
+        if (dt.isBefore(latestDate) && dt.isAfter(firstDate)) {
+          list.add(dd);
+        }
+      }
+    }
+
+    list.sort((a, b) => a.longDate.compareTo(b.longDate));
+    var fm = NumberFormat.compact();
+    p('HiveUtil: ${Emoji.appleGreen} found ${list.length} '
+        'dashboards for this date: ${firstDate.toIso8601String()} to ${latestDate.toIso8601String()}');
+    for (var value in list) {
+      p('${Emoji.appleGreen} Dashboard: ${value.date} - events: ${value.events}, avg: ${value.averageRating} money: ${fm.format(value.amount)}');
+    }
+
+    return list;
+  }
+
   var random = Random(DateTime.now().millisecondsSinceEpoch);
 
   final averages = [3.4,4.0,4.1,4.2,3.3,4.6,2.0,3.1,4.4,4.1,2.5,3.6,4.0,4.2,2,5,2,4.2,3.2,3.3,4.2,2.3,1.6,1.8,4.6,4.1,3.4,3.2,
@@ -226,7 +261,7 @@ class HiveUtil {
       }
     }
     var end = DateTime.now().millisecondsSinceEpoch;
-    var eMs = start - end;
+    var eMs = end - start;
     var eSecs = eMs / 1000;
     p('\n\n🍊🍊🍊Updated a total of $cnt dashboards; elapsed seconds: $eSecs');
   }

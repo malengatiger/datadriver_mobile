@@ -5,6 +5,7 @@ import 'package:universal_frontend/data_models/dashboard_data.dart';
 import 'package:universal_frontend/data_models/city.dart';
 
 import '../utils/util.dart';
+import 'event.dart';
 
 
 
@@ -15,6 +16,7 @@ class CacheBag {
   late List<CityAggregate> aggregates;
   late List<City> cities;
   late List<CityPlace> places;
+  late List<Event> events;
 
 
   CacheBag(
@@ -23,7 +25,7 @@ class CacheBag {
       required this.elapsedSeconds,
       required this.places,
       required this.dashboards,
-      required this.aggregates});
+      required this.aggregates, required this.events});
 
   CacheBag.fromJson(Map<String, dynamic> json) {
     cities = [];
@@ -31,6 +33,13 @@ class CacheBag {
       List list = json['cities'];
       for (var value in list) {
         cities.add(City.fromJson(value));
+      }
+    }
+    events = [];
+    if (json['events']!= null) {
+      List list = json['events'];
+      for (var value in list) {
+        events.add(Event.fromJson(value));
       }
     }
 
@@ -48,7 +57,6 @@ class CacheBag {
         aggregates.add(CityAggregate.fromJson(value));
       }
     }
-    p('Somehow we don\'t come here! WTF!');
     places = [];
     if (json['places']!= null) {
       List list = json['places'];
@@ -65,6 +73,10 @@ class CacheBag {
        var citiesList = <dynamic>[];
        for (var value in cities) {
          citiesList.add(value.toJson());
+       }
+       var eventsList = <dynamic>[];
+       for (var value in events) {
+         eventsList.add(value.toJson());
        }
        var dashList = <dynamic>[];
        for (var value in dashboards) {
@@ -85,6 +97,7 @@ class CacheBag {
        mainMap['dashboards'] = dashList;
        mainMap['places'] = placesList;
        mainMap['cities'] = citiesList;
+       mainMap['events'] = eventsList;
 
     return mainMap;
       }

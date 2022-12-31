@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 
@@ -90,10 +91,9 @@ class CacheManagerState extends State<CacheManager>
     await hiveUtil.addCities(cities: cities);
     p('\n\nCacheManager: ${Emoji.appleRed}${Emoji.appleRed}${Emoji.appleRed}'
         ' ${cities.length} cities cached in Hive');
+    messages.add(msg);
     if (mounted) {
-      setState(() {
-
-      });
+      setState(() {});
     }
   }
 
@@ -106,29 +106,45 @@ class CacheManagerState extends State<CacheManager>
       places.add(k);
     }
     await hiveUtil.addPlaces(places: places);
+    messages.add(msg);
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _saveEvents(CacheMessage msg) async {
     var start = DateTime.now().millisecondsSinceEpoch;
-    var events = <Event>[];
-    String mJson = msg.events!;
-    List m = jsonDecode(mJson);
-    for (var value in m) {
-      var k = Event.fromJson(value);
-      events.add(k);
-    }
-    await hiveUtil.addEvents(events: events);
 
-    var end = DateTime.now().millisecondsSinceEpoch;
-    var ms = (end -start)/1000;
-    var mMsg = CacheMessage(message: '${Emoji.blueDot} ${events.length} Hive events cached',
-        statusCode: statusBusy, date: DateTime.now().toIso8601String(),
-        elapsedSeconds: ms, type: typeMessage);
+    if (msg.cacheBagJson != null) {
+      var bag = CacheBag.fromJson(msg.cacheBagJson!);
+      p('${Emoji.heartOrange} ${bag.events.length} events to be written to Hive cache ...');
+      await hiveUtil.addEvents(events: bag.events);
+      var end = DateTime.now().millisecondsSinceEpoch;
+      var ms = (end - start) / 1000;
+
+      await SharedPrefs.saveConfig(CacheConfig(longDate: DateTime.now().millisecondsSinceEpoch,
+          stringDate: DateTime.now().toIso8601String(), elapsedSeconds: ms));
+
+
+      var mMsg = CacheMessage(
+          message: '${Emoji.blueDot} ${bag.events.length} Hive events cached',
+          statusCode: statusBusy,
+          date: DateTime.now().toIso8601String(),
+          elapsedSeconds: ms,
+          type: typeMessage);
+
+      messages.add(mMsg);
+      if (mounted) {
+        setState(() {
+
+        });
+      }
+    } else {
+      p('${Emoji.redDot} No events in cacheBag');
+    }
 
     if (mounted) {
-      setState(() {
-        messages.add(mMsg);
-      });
+      setState(() {});
     }
   }
 
@@ -141,6 +157,10 @@ class CacheManagerState extends State<CacheManager>
       list.add(k);
     }
     await hiveUtil.addDashboardDataList(dataList: list);
+    messages.add(msg);
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _saveAggregates(CacheMessage msg) async {
@@ -152,6 +172,10 @@ class CacheManagerState extends State<CacheManager>
       aggregates.add(k);
     }
     await hiveUtil.addAggregates(aggregates: aggregates);
+    messages.add(msg);
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _saveCacheBag(CacheMessage msg) async {
@@ -159,7 +183,7 @@ class CacheManagerState extends State<CacheManager>
         '- ${DateTime.now().toIso8601String()}');
     var start = DateTime.now().millisecondsSinceEpoch;
 
-    Map<String,dynamic> cache = msg.cacheBagJson!;
+    Map<String, dynamic> cache = msg.cacheBagJson!;
     var cacheBag = CacheBag.fromJson(cache);
     await hiveUtil.addCities(cities: cacheBag.cities);
     p('${Emoji.diamond} CacheManager: cities added to Hive: ${cacheBag.cities.length}');
@@ -172,28 +196,30 @@ class CacheManagerState extends State<CacheManager>
     await hiveUtil.addDashboardDataList(dataList: cacheBag.dashboards);
     p('${Emoji.diamond} CacheManager: dashboards added to Hive: ${cacheBag.dashboards.length}');
 
-    // await hiveUtil.addEvents(events: cacheBag.events);
-    // p('${Emoji.diamond} CacheManager: events added to Hive: ${cacheBag.events.length}');
-
     var end = DateTime.now().millisecondsSinceEpoch;
-    var elapsed = double.parse('${(end-start)/1000}');
-    p('\n\n${Emoji.appleGreen}${Emoji.appleGreen} CacheManager: big Hive cache job is complete! '
+    var elapsed = double.parse('${(end - start) / 1000}');
+
+    p('\n\n${Emoji.appleGreen}${Emoji.appleGreen} CacheManager: caching complete. '
         '${Emoji.appleRed} Hive elapsed time: $elapsed seconds '
         '- ${DateTime.now().toIso8601String()}');
 
-    var msg3 = CacheMessage(message: "💙💙Hive writes completed",
-        statusCode: statusBusy, date: DateTime.now().toIso8601String(),
-        elapsedSeconds: elapsed, type: typeMessage);
+    var msg3 = CacheMessage(
+        message: "🍊🍊data caching completed",
+        statusCode: statusDone,
+        date: DateTime.now().toIso8601String(),
+        elapsedSeconds: elapsed,
+        type: typeMessage);
+
+    isolate.kill();
+    messages.add(msg);
     messages.add(msg3);
 
     elapsedSeconds += elapsed;
-    isCaching = false;
     if (mounted) {
       setState(() {
-
+        isCaching = false;
       });
     }
-
   }
 
   void _startCache() async {
@@ -224,7 +250,7 @@ class CacheManagerState extends State<CacheManager>
       channel.stream.listen((data) async {
         if (data != null) {
           p('${Emoji.heartBlue}${Emoji.heartBlue}${Emoji.heartBlue} '
-              'CacheManager: Received cacheService result ${Emoji.appleRed} CacheMessage, '
+              'CacheManager: Received cacheService result ${Emoji.appleRed} CacheMessage '
               'statusCode: ${data['statusCode']} type: ${data['type']} msg: ${data['message']}');
           try {
             var msg = CacheMessage.fromJson(data);
@@ -274,18 +300,24 @@ class CacheManagerState extends State<CacheManager>
       }
       var config = await SharedPrefs.getConfig();
       if (config == null) {
-        var longDate = DateTime.now().subtract(const Duration(days:2)).millisecondsSinceEpoch;
-        var stringDate = DateTime.now().subtract(const Duration(days:2)).toIso8601String();
-        config = CacheConfig(longDate: longDate, stringDate: stringDate, elapsedSeconds: 0);
+        p('${Emoji.blueDot} cacheConfig is null, creating new config longDate = 1 day ago');
+        var longDate = DateTime.now()
+            .subtract(const Duration(days: 1))
+            .millisecondsSinceEpoch;
+        var stringDate =
+            DateTime.now().subtract(const Duration(days: 2)).toIso8601String();
+        config = CacheConfig(
+            longDate: longDate, stringDate: stringDate, elapsedSeconds: 0);
         await SharedPrefs.saveConfig(config);
       }
 
       var min = await SharedPrefs.getMinutesAgo();
       var params = CacheParameters(
-          sendPort: receivePort.sendPort,
-          minutesAgo: min,
-          url: url,
-          city: city, useCacheService: true,);
+        sendPort: receivePort.sendPort,
+        minutesAgo: min,
+        url: url,
+        useCacheService: true, cityId: '',
+      );
 
       isolate = await Isolate.spawn<CacheParameters>(heavyTask, params,
           paused: true,
@@ -299,9 +331,7 @@ class CacheManagerState extends State<CacheManager>
       errorReceivePort.listen((e) {
         p('${Emoji.redDot}${Emoji.redDot} exception occurred: $e');
         isCaching = false;
-        setState(() {
-
-        });
+        setState(() {});
         var ding = EmojiAlert(
           emojiSize: 32,
           alertTitle: const Text('DataDriver+'),
@@ -314,7 +344,6 @@ class CacheManagerState extends State<CacheManager>
           ),
         );
         ding.displayAlert(context);
-
       });
     } catch (e) {
       p('${Emoji.redDot} we have a problem: $e ${Emoji.redDot} ${Emoji.redDot}');
@@ -325,7 +354,7 @@ class CacheManagerState extends State<CacheManager>
   }
 
   Future<void> _processMessage(CacheMessage msg) async {
-     if (msg.statusCode == statusDone) {
+    if (msg.statusCode == statusDone) {
       p('\n${Emoji.redDot}${Emoji.redDot} '
           'CacheManager: received end message from CacheService, will remove loading ui '
           '${Emoji.heartBlue}${Emoji.heartBlue}');
@@ -338,38 +367,36 @@ class CacheManagerState extends State<CacheManager>
       } else {
         msg.message = '${Emoji.blueDot} ${msg.message}';
         await SharedPrefs.saveConfig(CacheConfig(
-          longDate: DateTime
-              .now()
-              .millisecondsSinceEpoch,
+          longDate: DateTime.now().millisecondsSinceEpoch,
           stringDate: DateTime.now().toIso8601String(),
-          elapsedSeconds: 0.0,));
+          elapsedSeconds: 0.0,
+        ));
       }
       messages.add(msg);
-
     } else {
       if (msg.statusCode == statusError) {
         isolate.kill(priority: Isolate.immediate);
         p('${Emoji.diamond}${Emoji.diamond}${Emoji.diamond} isolate killed');
         p("We have an error. Do something!");
-         var snackBar = SnackBar(
+        var snackBar = SnackBar(
           content: Text('Error: ${msg.message}'),
         );
         ScaffoldMessenger.of(context).showSnackBar(snackBar);
         isCaching = false;
-        setState(() {
-
-        });
+        msg.message = '${Emoji.redDot} ${msg.message}';
+        messages.add(msg);
+        if (mounted) {
+          setState(() {});
+        }
       } else {
         msg.message = '${Emoji.appleRed} ${msg.message}';
         messages.add(msg);
       }
     }
-    selectedCity = null;
+
     if (mounted) {
       setState(() {
-        _isolateEnd = DateTime
-            .now()
-            .millisecondsSinceEpoch;
+        _isolateEnd = DateTime.now().millisecondsSinceEpoch;
         elapsedSeconds = ((_isolateEnd! - _isolateStart) / 1000);
       });
     }
@@ -397,8 +424,6 @@ class CacheManagerState extends State<CacheManager>
     }
   }
 
-  var txtController = TextEditingController(text: '14');
-
   @override
   Widget build(BuildContext context) {
     var brightness = MediaQuery.of(context).platformBrightness;
@@ -415,74 +440,13 @@ class CacheManagerState extends State<CacheManager>
               ? Theme.of(context).backgroundColor
               : Theme.of(context).secondaryHeaderColor,
           bottom: PreferredSize(
-            preferredSize: Size.fromHeight(_isolateEnd == null ? 80 : 100),
+            preferredSize: Size.fromHeight(_isolateEnd == null ? 40 : 60),
             child: isCaching
                 ? const SizedBox(
                     height: 0,
                   )
                 : Column(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Cache One City?',
-                            style: GoogleFonts.lato(
-                                textStyle:
-                                    Theme.of(context).textTheme.bodySmall,
-                                fontWeight: FontWeight.normal,
-                                fontSize: 12,
-                                color:
-                                    isDarkMode ? Colors.white : Colors.black),
-                          ),
-                          const SizedBox(
-                            width: 16,
-                          ),
-                          SizedBox(
-                            width: 80,
-                            child: TextField(
-                              keyboardType: TextInputType.number,
-                              controller: txtController,
-                              onEditingComplete: () {},
-                              decoration: InputDecoration(
-                                  label: Text(
-                                    'Days Ago',
-                                    style: GoogleFonts.lato(
-                                        textStyle: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall,
-                                        fontWeight: FontWeight.normal,
-                                        fontSize: 12),
-                                  ),
-                                  hintText: 'Enter Days Ago'),
-                            ),
-                          ),
-                          const SizedBox(
-                            width: 16,
-                          ),
-                          ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    isDarkMode ? Colors.pink : Colors.yellow,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _showCities = true;
-                                });
-                              },
-                              child: Text(
-                                'Yes',
-                                style: GoogleFonts.lato(
-                                    textStyle:
-                                        Theme.of(context).textTheme.bodySmall,
-                                    fontWeight: FontWeight.normal,
-                                    fontSize: 12),
-                              )),
-                          const SizedBox(
-                            width: 8,
-                          ),
-                        ],
-                      ),
                       const SizedBox(
                         height: 16,
                       ),
@@ -562,14 +526,12 @@ class CacheManagerState extends State<CacheManager>
                       borderRadius: BorderRadius.circular(16.0)),
                   child: Column(
                     children: [
-                      SizedBox(
-                        height: selectedCity == null ? 16 : 120,
+                      const SizedBox(
+                        height: 16,
                       ),
-                      selectedCity == null
-                          ? const Text('Data caching logs')
-                          : Text('${selectedCity!.city} cache logs'),
-                      SizedBox(
-                        height: selectedCity == null ? 8 : 24,
+                      const Text('Data caching logs'),
+                      const SizedBox(
+                        height: 8,
                       ),
                       Expanded(
                         child: ListView.builder(
@@ -627,45 +589,11 @@ class CacheManagerState extends State<CacheManager>
               ),
             ),
             isCaching
-                ? Positioned(
+                ? const Positioned(
                     left: 4,
                     top: 0,
-                    child: Card(
-                      elevation: 16,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: Row(
-                          children: [
-                            Text(
-                              'Caching data',
-                              style: GoogleFonts.lato(
-                                  textStyle:
-                                      Theme.of(context).textTheme.bodySmall,
-                                  fontWeight: FontWeight.normal,
-                                  fontSize: 12),
-                            ),
-                            const SizedBox(
-                              width: 10,
-                            ),
-                            const SizedBox(
-                              height: 16,
-                              width: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 4,
-                                backgroundColor: Colors.pink,
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
-                    ))
-                : const SizedBox(
-                    height: 0,
-                  ),
-            _showCities
-                ? Positioned(
-                    child: CitySelector(
-                        cities: cities, onSelected: onSelected, elevation: 4))
+                    child: CachingCard(),
+                  )
                 : const SizedBox(
                     height: 0,
                   ),
@@ -679,13 +607,10 @@ class CacheManagerState extends State<CacheManager>
               p('${Emoji.redDot} Sorry, this exchange is currently busy!');
               return;
             }
-            setState(() {
-              selectedCity = null;
-            });
+            setState(() {});
             _animationController.reverse().then((value) {
               _startCache();
             });
-
           },
           child: isCaching
               ? const SizedBox(
@@ -700,38 +625,94 @@ class CacheManagerState extends State<CacheManager>
       ),
     );
   }
+}
 
-  City? selectedCity;
+class CachingCard extends StatefulWidget {
+  const CachingCard({
+    Key? key,
+  }) : super(key: key);
 
-  onSelected(City city) async {
-    selectedCity = city;
-    p('${Emoji.pear}${Emoji.pear} getting rid of possible keyboard from method onSelected!');
-    FocusManager.instance.primaryFocus?.unfocus();
-    messages.clear();
+  @override
+  State<CachingCard> createState() => CachingCardState();
+}
 
-    setState(() {
-      _showCities = false;
-      isCaching = true;
+class CachingCardState extends State<CachingCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  @override
+  void initState() {
+    _animationController = AnimationController(vsync: this);
+    super.initState();
+    _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    mTimer.cancel();
+    super.dispose();
+  }
+
+  var elapsedSeconds = 0;
+
+  late Timer mTimer;
+  void _startTimer() {
+    mTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
+      elapsedSeconds = timer.tick;
+      if (mounted) {
+        setState(() {});
+      }
     });
-    _animationController.forward();
-    p('${Emoji.redDot}${Emoji.redDot}${Emoji.redDot}'
-        ' creating isolate with daysAgo parameter = ${txtController.value.text}');
+  }
 
-    //test code
-    var places = await hiveUtil.getCityPlaces(cityId: city.id!);
-    var events = await hiveUtil.getCityEventsAll(cityId: city.id!);
-    if (places.isNotEmpty) {
-      var ev = await hiveUtil.getPlaceEvents(placeId: places.first.placeId!);
-      p('${Emoji.blueDot}${Emoji.blueDot}${Emoji.blueDot} '
-          'CacheManager:  ${ev.length} '
-          'events found for ${places.first.name!}');
-    }
-    p('${Emoji.blueDot}${Emoji.blueDot}${Emoji.blueDot} '
-        'CacheManager: ${places.length} places and ${events.length} '
-        'events found for ${selectedCity!.city}');
-    //
-    _createIsolate(
-        city: selectedCity, daysAgo: int.parse(txtController.value.text));
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 16,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            Text(
+              'Caching data',
+              style: GoogleFonts.lato(
+                  textStyle: Theme.of(context).textTheme.bodySmall,
+                  fontWeight: FontWeight.normal,
+                  fontSize: 12),
+            ),
+            const SizedBox(
+              width: 10,
+            ),
+            const SizedBox(
+              height: 16,
+              width: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 4,
+                backgroundColor: Colors.pink,
+              ),
+            ),
+            const SizedBox(
+              width: 16,
+            ),
+            Text(
+              '$elapsedSeconds',
+              style: GoogleFonts.secularOne(
+                  textStyle: Theme.of(context).textTheme.bodySmall,
+                  fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(
+              width: 4,
+            ),
+            Text(
+              'seconds elapsed',
+              style: GoogleFonts.lato(
+                  textStyle: Theme.of(context).textTheme.bodySmall,
+                  fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

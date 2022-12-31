@@ -10,6 +10,7 @@ import 'package:universal_frontend/utils/hive_util.dart';
 
 import '../../data_models/dashboard_data.dart';
 import '../../utils/util.dart';
+import 'chart_title.dart';
 import 'events_line_chart.dart';
 
 class MoneyLineChart extends StatefulWidget {
@@ -50,12 +51,17 @@ class MoneyLineChartState extends State<MoneyLineChart>
     super.dispose();
   }
 
+  int days = 0;
   void _getData() async {
-    _dashboards = await hiveUtil.getDashboardDataList(date: DateTime.now());
+    _dashboards = await hiveUtil.getDashboardDataList(date: DateTime.now().subtract(Duration(days: days)));
     //process events, break into hours and events spots
     _dashboards.sort((a, b) => a.longDate.compareTo(b.longDate));
     _buildLineChartData();
     setState(() {});
+  }
+  void _onDaysSelected(int days) {
+    this.days = days;
+    _getData();
   }
 
   LineChartData _buildLineChartData() {
@@ -306,10 +312,7 @@ class MoneyLineChartState extends State<MoneyLineChart>
       child: Scaffold(
         backgroundColor: Theme.of(context).secondaryHeaderColor,
         appBar: AppBar(
-          title: const Text(
-            'Money Chart',
-            style: TextStyle(fontSize: 12),
-          ),
+          title: ChartTitle(days: days, onSelected: _onDaysSelected, title: 'Money Chart'),
           actions: [
             IconButton(
                 onPressed: () {
